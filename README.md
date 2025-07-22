@@ -1,71 +1,55 @@
-# Personal Semantic Engine (Faraday)
+# Personal Semantic Engine
 
-A comprehensive system that allows users to create a unified, searchable repository of their personal data by ingesting plain English thoughts and connecting to various structured APIs. The system builds a semantic understanding of the user's life and provides both timeline visualization and intelligent search capabilities across all personal data sources.
+A personal knowledge management system with semantic search capabilities.
 
-## Features
+## Database Setup
 
-- Natural language thought input with entity extraction
-- Semantic search with filtering by entity types
-- Timeline visualization of personal data
-- Clean architecture with domain-driven design
-- API-first design with FastAPI
-
-## Architecture
-
-The project follows clean architecture principles with the following layers:
-
-- **Domain Layer**: Core business entities and interfaces
-- **Application Layer**: Use cases that orchestrate business logic
-- **Infrastructure Layer**: Implementations of interfaces
-- **API Layer**: FastAPI routes and controllers
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL
-- Poetry
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   poetry install
-   ```
-3. Copy `.env.example` to `.env` and update with your configuration
-4. Run database migrations:
-   ```bash
-   alembic upgrade head
-   ```
-5. Start the application:
-   ```bash
-   poetry run python -m src.main
-   ```
-
-## Development
-
-### Code Quality
-
-The project uses the following tools for code quality:
-
-- Black for code formatting
-- isort for import sorting
-- mypy for type checking
-- flake8 for linting
-- pytest for testing
-
-Run all checks:
+1. Create a `.env` file based on `.env.example`:
 
 ```bash
-poetry run black .
-poetry run isort .
-poetry run mypy src/
-poetry run flake8 src/
-poetry run pytest
+cp .env.example .env
 ```
 
-## License
+2. Update the database connection string in `.env`:
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+```
+DATABASE_URL=postgresql+asyncpg://username:password@localhost/personal_semantic_engine
+```
+
+3. Initialize the database:
+
+```bash
+python scripts/init_db.py
+```
+
+## Running Tests
+
+To run the repository integration tests:
+
+```bash
+# Install test dependencies
+pip install pytest pytest-asyncio
+
+# Run tests
+pytest tests/infrastructure/repositories/
+```
+
+## Database Migrations
+
+To create a new migration:
+
+```bash
+alembic revision -m "description_of_changes" --autogenerate
+```
+
+To apply migrations:
+
+```bash
+alembic upgrade head
+```
+
+To downgrade:
+
+```bash
+alembic downgrade -1  # Go back one revision
+```
