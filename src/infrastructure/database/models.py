@@ -96,7 +96,7 @@ class Thought(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     content = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
-    metadata = Column(JSONB, default={})
+    thought_metadata = Column(JSONB, default={})  # Renamed from metadata to avoid SQLAlchemy conflict
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -111,7 +111,7 @@ class Thought(Base):
         Returns:
             Domain thought entity
         """
-        metadata_dict = self.metadata or {}
+        metadata_dict = self.thought_metadata or {}
         
         # Process location data if present
         location = None
@@ -198,7 +198,7 @@ class Thought(Base):
             user_id=thought.user_id,
             content=thought.content,
             timestamp=thought.timestamp,
-            metadata=metadata_dict,
+            thought_metadata=metadata_dict,
             created_at=thought.created_at,
             updated_at=thought.updated_at,
         )
