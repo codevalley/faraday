@@ -8,7 +8,7 @@
   - Set up FastAPI project structure with Pydantic models
   - _Requirements: 6.1, 6.2_
 
-- [ ] 2. Implement core domain models and entities
+- [x] 2. Implement core domain models and entities
   - Create Thought domain entity using Pydantic BaseModel with validation
   - Create SemanticEntry domain entity with EntityType enum using Python Enum
   - Create User domain entity with authentication properties and Pydantic validation
