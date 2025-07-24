@@ -15,7 +15,9 @@ class DateRange(BaseModel):
     end_date: Optional[datetime] = None
 
     @validator("end_date")
-    def end_date_after_start_date(cls, v: Optional[datetime], values: Dict) -> Optional[datetime]:
+    def end_date_after_start_date(
+        cls, v: Optional[datetime], values: Dict
+    ) -> Optional[datetime]:
         """Validate that end_date is after start_date if both are provided.
 
         Args:

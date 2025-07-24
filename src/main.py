@@ -30,7 +30,8 @@ def load_config() -> None:
         {
             "db": {
                 "connection_string": os.getenv(
-                    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/faraday"
+                    "DATABASE_URL",
+                    "postgresql+asyncpg://postgres:postgres@localhost:5432/faraday",
                 ),
             },
             "api": {

@@ -10,6 +10,6 @@ from .user_repository import PostgreSQLUserRepository
 
 __all__ = [
     "PostgreSQLThoughtRepository",
-    "PostgreSQLUserRepository", 
+    "PostgreSQLUserRepository",
     "PostgreSQLSemanticEntryRepository",
 ]

@@ -19,7 +19,7 @@ def test_relationship_creation():
     relationship_type = "mentions"
     strength = 0.8
     created_at = datetime.now()
-    
+
     # Act
     relationship = Relationship(
         id=relationship_id,
@@ -29,7 +29,7 @@ def test_relationship_creation():
         strength=strength,
         created_at=created_at,
     )
-    
+
     # Assert
     assert relationship.id == relationship_id
     assert relationship.source_entity_id == source_entity_id
@@ -45,7 +45,7 @@ def test_relationship_strength_validation():
     relationship_id = uuid.uuid4()
     source_entity_id = uuid.uuid4()
     target_entity_id = uuid.uuid4()
-    
+
     # Act & Assert - Test with strength < 0
     with pytest.raises(ValidationError) as exc_info:
         Relationship(
@@ -55,9 +55,9 @@ def test_relationship_strength_validation():
             relationship_type="mentions",
             strength=-0.1,
         )
-    
+
     assert "strength" in str(exc_info.value)
-    
+
     # Act & Assert - Test with strength > 1
     with pytest.raises(ValidationError) as exc_info:
         Relationship(
@@ -67,7 +67,7 @@ def test_relationship_strength_validation():
             relationship_type="mentions",
             strength=1.1,
         )
-    
+
     assert "strength" in str(exc_info.value)
 
 
@@ -82,7 +82,7 @@ def test_semantic_entry_creation():
     context = "I met with John Doe yesterday"
     embedding = [0.1, 0.2, 0.3, 0.4]
     extracted_at = datetime.now()
-    
+
     # Act
     semantic_entry = SemanticEntry(
         id=entry_id,
@@ -94,7 +94,7 @@ def test_semantic_entry_creation():
         embedding=embedding,
         extracted_at=extracted_at,
     )
-    
+
     # Assert
     assert semantic_entry.id == entry_id
     assert semantic_entry.thought_id == thought_id
@@ -112,7 +112,7 @@ def test_semantic_entry_with_relationships():
     # Arrange
     entry_id = uuid.uuid4()
     thought_id = uuid.uuid4()
-    
+
     relationship = Relationship(
         id=uuid.uuid4(),
         source_entity_id=entry_id,
@@ -120,7 +120,7 @@ def test_semantic_entry_with_relationships():
         relationship_type="mentions",
         strength=0.8,
     )
-    
+
     # Act
     semantic_entry = SemanticEntry(
         id=entry_id,
@@ -131,7 +131,7 @@ def test_semantic_entry_with_relationships():
         context="I met with John Doe yesterday",
         relationships=[relationship],
     )
-    
+
     # Assert
     assert len(semantic_entry.relationships) == 1
     assert semantic_entry.relationships[0] == relationship
@@ -142,7 +142,7 @@ def test_semantic_entry_empty_entity_value():
     # Arrange
     entry_id = uuid.uuid4()
     thought_id = uuid.uuid4()
-    
+
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         SemanticEntry(
@@ -153,7 +153,7 @@ def test_semantic_entry_empty_entity_value():
             confidence=0.95,
             context="Empty entity value",
         )
-    
+
     assert "Entity value cannot be empty" in str(exc_info.value)
 
 
@@ -162,7 +162,7 @@ def test_semantic_entry_confidence_validation():
     # Arrange
     entry_id = uuid.uuid4()
     thought_id = uuid.uuid4()
-    
+
     # Act & Assert - Test with confidence < 0
     with pytest.raises(ValidationError) as exc_info:
         SemanticEntry(
@@ -173,9 +173,9 @@ def test_semantic_entry_confidence_validation():
             confidence=-0.1,
             context="Test context",
         )
-    
+
     assert "Confidence must be between 0 and 1" in str(exc_info.value)
-    
+
     # Act & Assert - Test with confidence > 1
     with pytest.raises(ValidationError) as exc_info:
         SemanticEntry(
@@ -186,5 +186,5 @@ def test_semantic_entry_confidence_validation():
             confidence=1.1,
             context="Test context",
         )
-    
+
     assert "Confidence must be between 0 and 1" in str(exc_info.value)

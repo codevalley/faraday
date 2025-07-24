@@ -8,16 +8,18 @@ import pinecone
 
 from src.domain.entities.enums import EntityType
 from src.domain.exceptions import VectorStoreError
-from src.domain.services.vector_store_service import VectorSearchResult as BaseVectorSearchResult
+from src.domain.services.vector_store_service import (
+    VectorSearchResult as BaseVectorSearchResult,
+)
 from src.domain.services.vector_store_service import VectorStoreService
 
 
 class VectorSearchResult(BaseVectorSearchResult):
     """Result of a vector search operation."""
-    
+
     def __init__(self, id: str, score: float, metadata: Dict[str, str]):
         """Initialize a vector search result.
-        
+
         Args:
             id: The unique identifier of the vector
             score: The similarity score (0-1)
@@ -62,10 +64,10 @@ class PineconeVectorStore(VectorStoreService):
 
         # Initialize Pinecone
         pinecone.init(api_key=self.api_key, environment=self.environment)
-        
+
         # Ensure index exists
         self._ensure_index_exists()
-        
+
         # Get the index
         self.index = pinecone.Index(self.index_name)
 
@@ -74,13 +76,11 @@ class PineconeVectorStore(VectorStoreService):
         try:
             # List existing indexes
             existing_indexes = pinecone.list_indexes()
-            
+
             # Create index if it doesn't exist
             if self.index_name not in existing_indexes:
                 pinecone.create_index(
-                    name=self.index_name,
-                    dimension=self.dimension,
-                    metric="cosine"
+                    name=self.index_name, dimension=self.dimension, metric="cosine"
                 )
         except Exception as e:
             raise VectorStoreError(f"Failed to ensure index exists: {str(e)}")
@@ -100,14 +100,8 @@ class PineconeVectorStore(VectorStoreService):
         """
         try:
             self.index.upsert(
-                vectors=[
-                    {
-                        "id": id,
-                        "values": vector,
-                        "metadata": metadata
-                    }
-                ],
-                namespace=self.namespace
+                vectors=[{"id": id, "values": vector, "metadata": metadata}],
+                namespace=self.namespace,
             )
         except Exception as e:
             raise VectorStoreError(f"Failed to store vector: {str(e)}")
@@ -140,26 +134,24 @@ class PineconeVectorStore(VectorStoreService):
                 filter_dict["entity_type"] = entity_type.value
             if user_id:
                 filter_dict["user_id"] = str(user_id)
-            
+
             # Execute search
             response = self.index.query(
                 vector=query_vector,
                 top_k=top_k,
                 namespace=self.namespace,
                 filter=filter_dict if filter_dict else None,
-                include_metadata=True
+                include_metadata=True,
             )
-            
+
             # Convert to domain objects
             results = []
             for match in response.matches:
                 result = VectorSearchResult(
-                    id=match.id,
-                    score=match.score,
-                    metadata=match.metadata
+                    id=match.id, score=match.score, metadata=match.metadata
                 )
                 results.append(result)
-                
+
             return results
         except Exception as e:
             raise VectorStoreError(f"Failed to search vectors: {str(e)}")
@@ -174,9 +166,6 @@ class PineconeVectorStore(VectorStoreService):
             VectorStoreError: If deletion fails
         """
         try:
-            self.index.delete(
-                ids=ids,
-                namespace=self.namespace
-            )
+            self.index.delete(ids=ids, namespace=self.namespace)
         except Exception as e:
             raise VectorStoreError(f"Failed to delete vectors: {str(e)}")

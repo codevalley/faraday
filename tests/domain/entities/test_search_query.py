@@ -20,13 +20,13 @@ def test_date_range_creation():
     # Arrange
     start_date = datetime.now() - timedelta(days=7)
     end_date = datetime.now()
-    
+
     # Act
     date_range = DateRange(
         start_date=start_date,
         end_date=end_date,
     )
-    
+
     # Assert
     assert date_range.start_date == start_date
     assert date_range.end_date == end_date
@@ -37,14 +37,14 @@ def test_date_range_validation():
     # Arrange
     start_date = datetime.now()
     end_date = datetime.now() - timedelta(days=7)  # End date before start date
-    
+
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         DateRange(
             start_date=start_date,
             end_date=end_date,
         )
-    
+
     assert "end_date must be after start_date" in str(exc_info.value)
 
 
@@ -53,13 +53,13 @@ def test_entity_filter_creation():
     # Arrange
     entity_types = [EntityType.PERSON, EntityType.LOCATION]
     entity_values = ["John Doe", "San Francisco"]
-    
+
     # Act
     entity_filter = EntityFilter(
         entity_types=entity_types,
         entity_values=entity_values,
     )
-    
+
     # Assert
     assert entity_filter.entity_types == entity_types
     assert entity_filter.entity_values == entity_values
@@ -72,7 +72,7 @@ def test_sort_options_creation():
         sort_by="date",
         sort_order="asc",
     )
-    
+
     # Assert
     assert sort_options.sort_by == "date"
     assert sort_options.sort_order == "asc"
@@ -82,7 +82,7 @@ def test_sort_options_default_values():
     """Test that sort options have correct default values."""
     # Arrange & Act
     sort_options = SortOptions()
-    
+
     # Assert
     assert sort_options.sort_by == "relevance"
     assert sort_options.sort_order == "desc"
@@ -93,12 +93,12 @@ def test_sort_options_validation():
     # Arrange & Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         SortOptions(sort_by="invalid")
-    
+
     assert "sort_by must be one of" in str(exc_info.value)
-    
+
     with pytest.raises(ValidationError) as exc_info:
         SortOptions(sort_order="invalid")
-    
+
     assert "sort_order must be one of" in str(exc_info.value)
 
 
@@ -109,7 +109,7 @@ def test_pagination_creation():
         page=2,
         page_size=20,
     )
-    
+
     # Assert
     assert pagination.page == 2
     assert pagination.page_size == 20
@@ -119,7 +119,7 @@ def test_pagination_default_values():
     """Test that pagination has correct default values."""
     # Arrange & Act
     pagination = Pagination()
-    
+
     # Assert
     assert pagination.page == 1
     assert pagination.page_size == 10
@@ -130,17 +130,17 @@ def test_pagination_validation():
     # Arrange & Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         Pagination(page=0)
-    
+
     assert "page" in str(exc_info.value)
-    
+
     with pytest.raises(ValidationError) as exc_info:
         Pagination(page_size=0)
-    
+
     assert "page_size" in str(exc_info.value)
-    
+
     with pytest.raises(ValidationError) as exc_info:
         Pagination(page_size=101)
-    
+
     assert "page_size" in str(exc_info.value)
 
 
@@ -165,7 +165,7 @@ def test_search_query_creation():
         page=2,
         page_size=20,
     )
-    
+
     # Act
     search_query = SearchQuery(
         query_text=query_text,
@@ -177,7 +177,7 @@ def test_search_query_creation():
         include_raw_content=False,
         highlight_matches=False,
     )
-    
+
     # Assert
     assert search_query.query_text == query_text
     assert search_query.user_id == user_id
@@ -196,7 +196,7 @@ def test_search_query_default_values():
         query_text="test query",
         user_id="user123",
     )
-    
+
     # Assert
     assert search_query.date_range is None
     assert search_query.entity_filter is None
@@ -214,5 +214,5 @@ def test_search_query_empty_query_text():
             query_text="",
             user_id="user123",
         )
-    
+
     assert "Search query text cannot be empty" in str(exc_info.value)

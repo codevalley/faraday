@@ -24,7 +24,9 @@ class SemanticEntryRepository(ABC):
         pass
 
     @abstractmethod
-    async def save_many(self, semantic_entries: List[SemanticEntry]) -> List[SemanticEntry]:
+    async def save_many(
+        self, semantic_entries: List[SemanticEntry]
+    ) -> List[SemanticEntry]:
         """Save multiple semantic entries to the repository.
 
         Args:

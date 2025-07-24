@@ -16,7 +16,7 @@ class LLMConfigLoader:
         """
         if config_path is None:
             config_path = os.path.join(os.path.dirname(__file__), "llm_config.json")
-        
+
         self.config_path = config_path
         self.config = self._load_config()
 
@@ -38,13 +38,13 @@ class LLMConfigLoader:
                             "gpt-4": {
                                 "description": "OpenAI GPT-4 model",
                                 "max_tokens": 8192,
-                                "default_temperature": 0.0
+                                "default_temperature": 0.0,
                             }
                         }
                     }
                 },
                 "default_provider": "openai",
-                "default_model": "gpt-4"
+                "default_model": "gpt-4",
             }
 
     def get_default_model(self) -> str:
@@ -70,12 +70,9 @@ class LLMConfigLoader:
             if model_name in provider_config.get("models", {}):
                 provider = provider_name
                 break
-        
+
         if not provider:
             # Return default config if model not found
-            return {
-                "max_tokens": 4096,
-                "default_temperature": 0.0
-            }
-        
+            return {"max_tokens": 4096, "default_temperature": 0.0}
+
         return self.config["providers"][provider]["models"][model_name]

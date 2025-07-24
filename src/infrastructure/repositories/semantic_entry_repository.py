@@ -35,14 +35,16 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             The saved semantic entry with any generated fields populated
         """
         db_entry = SemanticEntryModel.from_domain(semantic_entry)
-        
+
         async with self._database.session() as session:
             session.add(db_entry)
             await session.commit()
             await session.refresh(db_entry)
             return db_entry.to_domain()
 
-    async def save_many(self, semantic_entries: List[SemanticEntry]) -> List[SemanticEntry]:
+    async def save_many(
+        self, semantic_entries: List[SemanticEntry]
+    ) -> List[SemanticEntry]:
         """Save multiple semantic entries to the repository.
 
         Args:
@@ -51,16 +53,18 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
         Returns:
             The saved semantic entries with any generated fields populated
         """
-        db_entries = [SemanticEntryModel.from_domain(entry) for entry in semantic_entries]
-        
+        db_entries = [
+            SemanticEntryModel.from_domain(entry) for entry in semantic_entries
+        ]
+
         async with self._database.session() as session:
             session.add_all(db_entries)
             await session.commit()
-            
+
             # Refresh all entries to get generated fields
             for db_entry in db_entries:
                 await session.refresh(db_entry)
-            
+
             return [db_entry.to_domain() for db_entry in db_entries]
 
     async def find_by_id(self, entry_id: UUID) -> Optional[SemanticEntry]:
@@ -80,10 +84,10 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             )
             result = await session.execute(stmt)
             db_entry = result.scalar_one_or_none()
-            
+
             if db_entry is None:
                 return None
-                
+
             return db_entry.to_domain()
 
     async def find_by_thought(self, thought_id: UUID) -> List[SemanticEntry]:
@@ -104,7 +108,7 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             )
             result = await session.execute(stmt)
             db_entries = result.scalars().all()
-            
+
             return [db_entry.to_domain() for db_entry in db_entries]
 
     async def find_by_entity_type(
@@ -131,7 +135,7 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             )
             result = await session.execute(stmt)
             db_entries = result.scalars().all()
-            
+
             return [db_entry.to_domain() for db_entry in db_entries]
 
     async def find_by_entity_value(
@@ -158,7 +162,7 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             )
             result = await session.execute(stmt)
             db_entries = result.scalars().all()
-            
+
             return [db_entry.to_domain() for db_entry in db_entries]
 
     async def delete_by_thought(self, thought_id: UUID) -> None:
@@ -168,11 +172,13 @@ class PostgreSQLSemanticEntryRepository(SemanticEntryRepository):
             thought_id: The ID of the thought whose semantic entries to delete
         """
         async with self._database.session() as session:
-            stmt = select(SemanticEntryModel).where(SemanticEntryModel.thought_id == thought_id)
+            stmt = select(SemanticEntryModel).where(
+                SemanticEntryModel.thought_id == thought_id
+            )
             result = await session.execute(stmt)
             db_entries = result.scalars().all()
-            
+
             for db_entry in db_entries:
                 await session.delete(db_entry)
-            
+
             await session.commit()

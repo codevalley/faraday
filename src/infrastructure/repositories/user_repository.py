@@ -35,7 +35,7 @@ class PostgreSQLUserRepository(UserRepository):
             The saved user with any generated fields populated
         """
         db_user = UserModel.from_domain(user)
-        
+
         async with self._database.session() as session:
             session.add(db_user)
             await session.commit()
@@ -55,10 +55,10 @@ class PostgreSQLUserRepository(UserRepository):
             stmt = select(UserModel).where(UserModel.id == user_id)
             result = await session.execute(stmt)
             db_user = result.scalar_one_or_none()
-            
+
             if db_user is None:
                 return None
-                
+
             return db_user.to_domain()
 
     async def find_by_email(self, email: str) -> Optional[User]:
@@ -74,10 +74,10 @@ class PostgreSQLUserRepository(UserRepository):
             stmt = select(UserModel).where(UserModel.email == email)
             result = await session.execute(stmt)
             db_user = result.scalar_one_or_none()
-            
+
             if db_user is None:
                 return None
-                
+
             return db_user.to_domain()
 
     async def find_all(self, skip: int = 0, limit: int = 100) -> List[User]:
@@ -99,7 +99,7 @@ class PostgreSQLUserRepository(UserRepository):
             )
             result = await session.execute(stmt)
             db_users = result.scalars().all()
-            
+
             return [db_user.to_domain() for db_user in db_users]
 
     async def update(self, user: User) -> User:
@@ -118,10 +118,10 @@ class PostgreSQLUserRepository(UserRepository):
             stmt = select(UserModel).where(UserModel.id == user.id)
             result = await session.execute(stmt)
             db_user = result.scalar_one_or_none()
-            
+
             if db_user is None:
                 raise UserNotFoundError(user.id)
-            
+
             # Update fields from domain object
             updated_user = UserModel.from_domain(user)
             db_user.email = updated_user.email
@@ -130,7 +130,7 @@ class PostgreSQLUserRepository(UserRepository):
             db_user.is_admin = updated_user.is_admin
             db_user.updated_at = updated_user.updated_at
             db_user.last_login = updated_user.last_login
-            
+
             await session.commit()
             await session.refresh(db_user)
             return db_user.to_domain()
@@ -148,9 +148,9 @@ class PostgreSQLUserRepository(UserRepository):
             stmt = select(UserModel).where(UserModel.id == user_id)
             result = await session.execute(stmt)
             db_user = result.scalar_one_or_none()
-            
+
             if db_user is None:
                 raise UserNotFoundError(user_id)
-            
+
             await session.delete(db_user)
             await session.commit()

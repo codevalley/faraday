@@ -18,7 +18,7 @@ def mock_config_loader():
     mock.get_default_model.return_value = "gpt-4"
     mock.get_model_config.return_value = {
         "max_tokens": 4096,
-        "default_temperature": 0.0
+        "default_temperature": 0.0,
     }
     return mock
 
@@ -37,10 +37,10 @@ async def test_generate_text(mock_completion, llm_service):
     mock_response = MagicMock()
     mock_response.choices[0].message.content = "Generated text"
     mock_completion.return_value = mock_response
-    
+
     # Act
     result = await llm_service.generate("Test prompt")
-    
+
     # Assert
     assert result == "Generated text"
     mock_completion.assert_called_once_with(
@@ -60,19 +60,19 @@ async def test_generate_with_system_prompt(mock_completion, llm_service):
     mock_response = MagicMock()
     mock_response.choices[0].message.content = "Generated text"
     mock_completion.return_value = mock_response
-    
+
     # Act
     result = await llm_service.generate(
         "Test prompt", system_prompt="System instructions"
     )
-    
+
     # Assert
     assert result == "Generated text"
     mock_completion.assert_called_once_with(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "System instructions"},
-            {"role": "user", "content": "Test prompt"}
+            {"role": "user", "content": "Test prompt"},
         ],
         temperature=0.0,
         max_tokens=4096,
@@ -88,10 +88,10 @@ async def test_generate_json(mock_completion, llm_service):
     mock_response = MagicMock()
     mock_response.choices[0].message.content = '{"key": "value"}'
     mock_completion.return_value = mock_response
-    
+
     # Act
     result = await llm_service.generate("Test prompt", json_mode=True)
-    
+
     # Assert
     assert result == {"key": "value"}
     mock_completion.assert_called_once_with(
@@ -111,14 +111,14 @@ async def test_generate_json_with_schema(mock_completion, llm_service):
     mock_response = MagicMock()
     mock_response.choices[0].message.content = '{"key": "value"}'
     mock_completion.return_value = mock_response
-    
+
     schema = {"type": "object", "properties": {"key": {"type": "string"}}}
-    
+
     # Act
     result = await llm_service.generate(
         "Test prompt", json_mode=True, json_schema=schema
     )
-    
+
     # Assert
     assert result == {"key": "value"}
     mock_completion.assert_called_once_with(
@@ -136,9 +136,9 @@ async def test_generate_json_invalid_response(mock_completion, llm_service):
     """Test handling invalid JSON response."""
     # Arrange
     mock_response = MagicMock()
-    mock_response.choices[0].message.content = 'Invalid JSON'
+    mock_response.choices[0].message.content = "Invalid JSON"
     mock_completion.return_value = mock_response
-    
+
     # Act & Assert
     with pytest.raises(EntityExtractionError):
         await llm_service.generate("Test prompt", json_mode=True)
@@ -150,7 +150,7 @@ async def test_generate_api_error(mock_completion, llm_service):
     """Test handling API errors."""
     # Arrange
     mock_completion.side_effect = Exception("API error")
-    
+
     # Act & Assert
     with pytest.raises(EntityExtractionError):
         await llm_service.generate("Test prompt")

@@ -33,13 +33,15 @@ class LLMEntityExtractionService(EntityExtractionService):
         self._prompts_dir = prompts_dir or os.path.join(
             os.path.dirname(__file__), "prompts"
         )
-        
+
         # Load prompt templates
         self._system_prompt = self._load_prompt("entity_extraction_system.txt")
         self._extraction_prompt = self._load_prompt("entity_extraction.txt")
-        
+
         # Load JSON schema for structured output
-        self._extraction_schema = self._load_json_schema("entity_extraction_schema.json")
+        self._extraction_schema = self._load_json_schema(
+            "entity_extraction_schema.json"
+        )
 
     def _load_prompt(self, filename: str) -> str:
         """Load a prompt template from file.
@@ -74,7 +76,10 @@ class LLMEntityExtractionService(EntityExtractionService):
             return None
 
     async def extract_entities(
-        self, content: str, thought_id: uuid.UUID, metadata: Optional[ThoughtMetadata] = None
+        self,
+        content: str,
+        thought_id: uuid.UUID,
+        metadata: Optional[ThoughtMetadata] = None,
     ) -> List[SemanticEntry]:
         """Extract semantic entities from thought content.
 
@@ -91,7 +96,7 @@ class LLMEntityExtractionService(EntityExtractionService):
         """
         # Format the extraction prompt with content and metadata
         formatted_prompt = self._format_extraction_prompt(content, metadata)
-        
+
         try:
             # Call the LLM to extract entities
             extraction_result = await self._llm_service.generate(
@@ -100,14 +105,16 @@ class LLMEntityExtractionService(EntityExtractionService):
                 json_mode=True,
                 json_schema=self._extraction_schema,
             )
-            
+
             # Convert the LLM response to SemanticEntry objects
             return self._convert_to_semantic_entries(extraction_result, thought_id)
-            
+
         except Exception as e:
             raise EntityExtractionError(f"Entity extraction failed: {str(e)}")
 
-    def _format_extraction_prompt(self, content: str, metadata: Optional[ThoughtMetadata]) -> str:
+    def _format_extraction_prompt(
+        self, content: str, metadata: Optional[ThoughtMetadata]
+    ) -> str:
         """Format the extraction prompt with content and metadata.
 
         Args:
@@ -119,17 +126,17 @@ class LLMEntityExtractionService(EntityExtractionService):
         """
         # Start with the base extraction prompt
         prompt = self._extraction_prompt
-        
+
         # Replace placeholders with actual content
         prompt = prompt.replace("{CONTENT}", content)
-        
+
         # Add metadata if available
         if metadata:
             metadata_str = json.dumps(metadata.dict(exclude_none=True), indent=2)
             prompt = prompt.replace("{METADATA}", metadata_str)
         else:
             prompt = prompt.replace("{METADATA}", "{}")
-            
+
         return prompt
 
     def _convert_to_semantic_entries(
@@ -150,10 +157,10 @@ class LLMEntityExtractionService(EntityExtractionService):
         try:
             entities = extraction_result.get("entities", [])
             semantic_entries = []
-            
+
             # Create a dictionary to store entries by their temporary IDs
             entry_map = {}
-            
+
             # First pass: Create all semantic entries
             for entity in entities:
                 # Validate entity type
@@ -162,7 +169,7 @@ class LLMEntityExtractionService(EntityExtractionService):
                 except ValueError:
                     # Skip entities with invalid types
                     continue
-                
+
                 # Create a new semantic entry
                 entry = SemanticEntry(
                     id=uuid.uuid4(),
@@ -174,26 +181,26 @@ class LLMEntityExtractionService(EntityExtractionService):
                     relationships=[],
                     extracted_at=datetime.now(),
                 )
-                
+
                 semantic_entries.append(entry)
-                
+
                 # Store the entry with its temporary ID for relationship mapping
                 entry_map[entity.get("id", str(len(entry_map)))] = entry
-            
+
             # Second pass: Add relationships
             for entity in entities:
                 if "relationships" not in entity:
                     continue
-                    
+
                 source_entry = entry_map.get(entity.get("id", ""))
                 if not source_entry:
                     continue
-                    
+
                 for rel in entity["relationships"]:
                     target_entry = entry_map.get(rel.get("target_id", ""))
                     if not target_entry:
                         continue
-                        
+
                     # Create relationship
                     relationship = Relationship(
                         id=uuid.uuid4(),
@@ -203,11 +210,13 @@ class LLMEntityExtractionService(EntityExtractionService):
                         strength=rel.get("strength", 0.9),
                         created_at=datetime.now(),
                     )
-                    
+
                     # Add to source entry's relationships
                     source_entry.relationships.append(relationship)
-            
+
             return semantic_entries
-            
+
         except Exception as e:
-            raise EntityExtractionError(f"Failed to process extraction result: {str(e)}")
+            raise EntityExtractionError(
+                f"Failed to process extraction result: {str(e)}"
+            )

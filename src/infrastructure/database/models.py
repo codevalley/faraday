@@ -4,16 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    JSON,
-    String,
-    Table,
-)
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, String, Table
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -21,12 +12,9 @@ from sqlalchemy.orm import relationship
 from src.domain.entities.enums import EntityType
 from src.domain.entities.semantic_entry import Relationship as DomainRelationship
 from src.domain.entities.semantic_entry import SemanticEntry as DomainSemanticEntry
-from src.domain.entities.thought import (
-    GeoLocation,
-    Thought as DomainThought,
-    ThoughtMetadata,
-    WeatherData,
-)
+from src.domain.entities.thought import GeoLocation
+from src.domain.entities.thought import Thought as DomainThought
+from src.domain.entities.thought import ThoughtMetadata, WeatherData
 from src.domain.entities.user import User as DomainUser
 
 Base = declarative_base()
@@ -46,7 +34,9 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_login = Column(DateTime, nullable=True)
 
-    thoughts = relationship("Thought", back_populates="user", cascade="all, delete-orphan")
+    thoughts = relationship(
+        "Thought", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def to_domain(self) -> DomainUser:
         """Convert to domain entity.
@@ -96,7 +86,9 @@ class Thought(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     content = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
-    thought_metadata = Column(JSONB, default={})  # Renamed from metadata to avoid SQLAlchemy conflict
+    thought_metadata = Column(
+        JSONB, default={}
+    )  # Renamed from metadata to avoid SQLAlchemy conflict
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -112,7 +104,7 @@ class Thought(Base):
             Domain thought entity
         """
         metadata_dict = self.thought_metadata or {}
-        
+
         # Process location data if present
         location = None
         if metadata_dict.get("location"):
@@ -122,7 +114,7 @@ class Thought(Base):
                 longitude=loc_data.get("longitude"),
                 name=loc_data.get("name"),
             )
-            
+
         # Process weather data if present
         weather = None
         if metadata_dict.get("weather"):
@@ -132,7 +124,7 @@ class Thought(Base):
                 condition=weather_data.get("condition"),
                 humidity=weather_data.get("humidity"),
             )
-            
+
         # Create metadata object
         metadata = ThoughtMetadata(
             location=location,
@@ -141,10 +133,10 @@ class Thought(Base):
             tags=metadata_dict.get("tags", []),
             custom=metadata_dict.get("custom", {}),
         )
-        
+
         # Convert semantic entries
         semantic_entries = [entry.to_domain() for entry in self.semantic_entries]
-        
+
         return DomainThought(
             id=self.id,
             user_id=self.user_id,
@@ -168,7 +160,7 @@ class Thought(Base):
         """
         # Convert metadata to dict for JSONB storage
         metadata_dict = {}
-        
+
         if thought.metadata:
             if thought.metadata.location:
                 metadata_dict["location"] = {
@@ -176,23 +168,23 @@ class Thought(Base):
                     "longitude": thought.metadata.location.longitude,
                     "name": thought.metadata.location.name,
                 }
-                
+
             if thought.metadata.weather:
                 metadata_dict["weather"] = {
                     "temperature": thought.metadata.weather.temperature,
                     "condition": thought.metadata.weather.condition,
                     "humidity": thought.metadata.weather.humidity,
                 }
-                
+
             if thought.metadata.mood:
                 metadata_dict["mood"] = thought.metadata.mood
-                
+
             if thought.metadata.tags:
                 metadata_dict["tags"] = thought.metadata.tags
-                
+
             if thought.metadata.custom:
                 metadata_dict["custom"] = thought.metadata.custom
-        
+
         return cls(
             id=thought.id,
             user_id=thought.user_id,
@@ -220,9 +212,9 @@ class SemanticEntry(Base):
 
     thought = relationship("Thought", back_populates="semantic_entries")
     relationships = relationship(
-        "Relationship", 
+        "Relationship",
         primaryjoin="or_(SemanticEntry.id==Relationship.source_entity_id, "
-                    "SemanticEntry.id==Relationship.target_entity_id)",
+        "SemanticEntry.id==Relationship.target_entity_id)",
         cascade="all, delete-orphan",
     )
 
@@ -233,9 +225,12 @@ class SemanticEntry(Base):
             Domain semantic entry entity
         """
         # Convert relationships
-        domain_relationships = [rel.to_domain() for rel in self.relationships 
-                               if rel.source_entity_id == self.id]
-        
+        domain_relationships = [
+            rel.to_domain()
+            for rel in self.relationships
+            if rel.source_entity_id == self.id
+        ]
+
         return DomainSemanticEntry(
             id=self.id,
             thought_id=self.thought_id,
@@ -276,8 +271,12 @@ class Relationship(Base):
     __tablename__ = "entity_relationships"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    source_entity_id = Column(UUID(as_uuid=True), ForeignKey("semantic_entries.id"), nullable=False)
-    target_entity_id = Column(UUID(as_uuid=True), ForeignKey("semantic_entries.id"), nullable=False)
+    source_entity_id = Column(
+        UUID(as_uuid=True), ForeignKey("semantic_entries.id"), nullable=False
+    )
+    target_entity_id = Column(
+        UUID(as_uuid=True), ForeignKey("semantic_entries.id"), nullable=False
+    )
     relationship_type = Column(String, nullable=False)
     strength = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.now)

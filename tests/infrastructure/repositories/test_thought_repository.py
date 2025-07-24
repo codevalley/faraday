@@ -8,12 +8,20 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.domain.entities.thought import GeoLocation, Thought, ThoughtMetadata, WeatherData
+from src.domain.entities.thought import (
+    GeoLocation,
+    Thought,
+    ThoughtMetadata,
+    WeatherData,
+)
 from src.domain.entities.user import User
 from src.domain.exceptions import ThoughtNotFoundError
 from src.infrastructure.database.connection import Database
-from src.infrastructure.database.models import Base, User as UserModel
-from src.infrastructure.repositories.thought_repository import PostgreSQLThoughtRepository
+from src.infrastructure.database.models import Base
+from src.infrastructure.database.models import User as UserModel
+from src.infrastructure.repositories.thought_repository import (
+    PostgreSQLThoughtRepository,
+)
 
 
 @pytest.fixture
@@ -26,24 +34,22 @@ def test_db_url():
 async def db_session(test_db_url):
     """Create a test database session."""
     engine = create_async_engine(test_db_url)
-    
+
     # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # Create session
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-    
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     async with async_session() as session:
         yield session
-    
+
     # Clean up
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -96,7 +102,7 @@ def sample_thought(test_user):
         tags=["work", "idea"],
         custom={"priority": "high"},
     )
-    
+
     return Thought(
         id=uuid.uuid4(),
         user_id=test_user.id,
@@ -114,7 +120,7 @@ async def test_save_thought(thought_repository, sample_thought):
     """Test saving a thought to the repository."""
     # Act
     saved_thought = await thought_repository.save(sample_thought)
-    
+
     # Assert
     assert saved_thought.id == sample_thought.id
     assert saved_thought.content == sample_thought.content
@@ -131,10 +137,10 @@ async def test_find_by_id(thought_repository, sample_thought):
     """Test finding a thought by ID."""
     # Arrange
     await thought_repository.save(sample_thought)
-    
+
     # Act
     found_thought = await thought_repository.find_by_id(sample_thought.id)
-    
+
     # Assert
     assert found_thought is not None
     assert found_thought.id == sample_thought.id
@@ -147,7 +153,7 @@ async def test_find_by_user(thought_repository, sample_thought, test_user):
     """Test finding thoughts by user ID."""
     # Arrange
     await thought_repository.save(sample_thought)
-    
+
     # Create another thought for the same user
     another_thought = Thought(
         id=uuid.uuid4(),
@@ -160,10 +166,10 @@ async def test_find_by_user(thought_repository, sample_thought, test_user):
         updated_at=datetime.now(),
     )
     await thought_repository.save(another_thought)
-    
+
     # Act
     thoughts = await thought_repository.find_by_user(test_user.id)
-    
+
     # Assert
     assert len(thoughts) == 2
     contents = [thought.content for thought in thoughts]
@@ -176,7 +182,7 @@ async def test_update_thought(thought_repository, sample_thought):
     """Test updating a thought."""
     # Arrange
     await thought_repository.save(sample_thought)
-    
+
     # Create updated thought with same ID
     updated_thought = Thought(
         id=sample_thought.id,
@@ -191,15 +197,15 @@ async def test_update_thought(thought_repository, sample_thought):
         created_at=sample_thought.created_at,
         updated_at=datetime.now(),
     )
-    
+
     # Act
     result = await thought_repository.update(updated_thought)
-    
+
     # Assert
     assert result.content == "Updated content"
     assert result.metadata.mood == "Focused"
     assert "updated" in result.metadata.tags
-    
+
     # Verify in database
     found_thought = await thought_repository.find_by_id(sample_thought.id)
     assert found_thought.content == "Updated content"
@@ -211,10 +217,10 @@ async def test_delete_thought(thought_repository, sample_thought):
     """Test deleting a thought."""
     # Arrange
     await thought_repository.save(sample_thought)
-    
+
     # Act
     await thought_repository.delete(sample_thought.id)
-    
+
     # Assert
     found_thought = await thought_repository.find_by_id(sample_thought.id)
     assert found_thought is None

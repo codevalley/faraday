@@ -82,7 +82,7 @@ class OpenAIEmbeddingService(EmbeddingService):
             # Process in batches to avoid API limits
             results = []
             for i in range(0, len(valid_texts), self.batch_size):
-                batch = valid_texts[i:i + self.batch_size]
+                batch = valid_texts[i : i + self.batch_size]
                 response = await self.client.embeddings.create(
                     model=self.model,
                     input=batch,

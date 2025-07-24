@@ -25,24 +25,22 @@ def test_db_url():
 async def db_session(test_db_url):
     """Create a test database session."""
     engine = create_async_engine(test_db_url)
-    
+
     # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     # Create session
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-    
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     async with async_session() as session:
         yield session
-    
+
     # Clean up
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -73,7 +71,7 @@ async def test_save_user(user_repository, sample_user):
     """Test saving a user to the repository."""
     # Act
     saved_user = await user_repository.save(sample_user)
-    
+
     # Assert
     assert saved_user.id == sample_user.id
     assert saved_user.email == sample_user.email
@@ -85,10 +83,10 @@ async def test_find_by_id(user_repository, sample_user):
     """Test finding a user by ID."""
     # Arrange
     await user_repository.save(sample_user)
-    
+
     # Act
     found_user = await user_repository.find_by_id(sample_user.id)
-    
+
     # Assert
     assert found_user is not None
     assert found_user.id == sample_user.id
@@ -100,10 +98,10 @@ async def test_find_by_email(user_repository, sample_user):
     """Test finding a user by email."""
     # Arrange
     await user_repository.save(sample_user)
-    
+
     # Act
     found_user = await user_repository.find_by_email(sample_user.email)
-    
+
     # Assert
     assert found_user is not None
     assert found_user.id == sample_user.id
@@ -115,7 +113,7 @@ async def test_find_all(user_repository, sample_user):
     """Test finding all users."""
     # Arrange
     await user_repository.save(sample_user)
-    
+
     # Create another user
     another_user = User(
         id=uuid.uuid4(),
@@ -128,10 +126,10 @@ async def test_find_all(user_repository, sample_user):
         last_login=None,
     )
     await user_repository.save(another_user)
-    
+
     # Act
     users = await user_repository.find_all()
-    
+
     # Assert
     assert len(users) == 2
     emails = [user.email for user in users]
@@ -144,7 +142,7 @@ async def test_update_user(user_repository, sample_user):
     """Test updating a user."""
     # Arrange
     await user_repository.save(sample_user)
-    
+
     # Create updated user with same ID
     updated_user = User(
         id=sample_user.id,
@@ -156,16 +154,16 @@ async def test_update_user(user_repository, sample_user):
         updated_at=datetime.now(),
         last_login=datetime.now(),
     )
-    
+
     # Act
     result = await user_repository.update(updated_user)
-    
+
     # Assert
     assert result.email == "updated@example.com"
     assert result.hashed_password == "updated_password"
     assert result.is_admin is True
     assert result.last_login is not None
-    
+
     # Verify in database
     found_user = await user_repository.find_by_id(sample_user.id)
     assert found_user.email == "updated@example.com"
@@ -177,10 +175,10 @@ async def test_delete_user(user_repository, sample_user):
     """Test deleting a user."""
     # Arrange
     await user_repository.save(sample_user)
-    
+
     # Act
     await user_repository.delete(sample_user.id)
-    
+
     # Assert
     found_user = await user_repository.find_by_id(sample_user.id)
     assert found_user is None

@@ -28,9 +28,9 @@ async def init_db() -> None:
     # This is PostgreSQL specific
     db_name = database_url.split("/")[-1]
     postgres_url = database_url.rsplit("/", 1)[0] + "/postgres"
-    
+
     engine = create_async_engine(postgres_url)
-    
+
     try:
         async with engine.begin() as conn:
             # Check if database exists
@@ -38,7 +38,7 @@ async def init_db() -> None:
                 f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"
             )
             exists = result.scalar() is not None
-            
+
             if not exists:
                 print(f"Creating database {db_name}...")
                 # Close all connections to the database before dropping
@@ -48,7 +48,7 @@ async def init_db() -> None:
         print(f"Error creating database: {e}")
     finally:
         await engine.dispose()
-    
+
     # Run Alembic migrations
     print("Running database migrations...")
     os.system("alembic upgrade head")

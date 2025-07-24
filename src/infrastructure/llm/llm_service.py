@@ -33,21 +33,29 @@ class LLMService:
         """
         # Load configuration
         self._config_loader = config_loader or LLMConfigLoader()
-        
+
         # Set model from args, env, or config
         self.model = model or self._config_loader.get_default_model()
-        
+
         # Get model-specific configuration
         model_config = self._config_loader.get_model_config(self.model)
-        
+
         # Set parameters with priority: args > env > config > default
-        self.temperature = temperature if temperature is not None else float(
-            os.getenv("LLM_TEMPERATURE", model_config.get("default_temperature", 0.0))
+        self.temperature = (
+            temperature
+            if temperature is not None
+            else float(
+                os.getenv(
+                    "LLM_TEMPERATURE", model_config.get("default_temperature", 0.0)
+                )
+            )
         )
-        self.max_tokens = max_tokens if max_tokens is not None else int(
-            os.getenv("LLM_MAX_TOKENS", model_config.get("max_tokens", 1024))
+        self.max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else int(os.getenv("LLM_MAX_TOKENS", model_config.get("max_tokens", 1024)))
         )
-        
+
         # Set API key if provided, otherwise LiteLLM will use environment variables
         if api_key:
             if "openai" in self.model or "gpt" in self.model:
@@ -79,14 +87,14 @@ class LLMService:
             EntityExtractionError: If the LLM call fails or JSON parsing fails
         """
         messages = []
-        
+
         # Add system prompt if provided
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        
+
         # Add user prompt
         messages.append({"role": "user", "content": prompt})
-        
+
         try:
             # Configure response format for JSON if requested
             response_format = None
@@ -96,7 +104,7 @@ class LLMService:
                     # Some models support json_schema, but not all
                     # We'll include it for those that do
                     response_format["schema"] = json_schema
-            
+
             # Make the API call
             response = await completion(
                 model=self.model,
@@ -105,10 +113,10 @@ class LLMService:
                 max_tokens=self.max_tokens,
                 response_format=response_format if json_mode else None,
             )
-            
+
             # Extract the content from the response
             content = response.choices[0].message.content
-            
+
             # Parse JSON if requested
             if json_mode:
                 try:
@@ -117,8 +125,8 @@ class LLMService:
                     raise EntityExtractionError(
                         f"Failed to parse JSON from LLM response: {str(e)}"
                     )
-            
+
             return content
-            
+
         except Exception as e:
             raise EntityExtractionError(f"LLM API call failed: {str(e)}")

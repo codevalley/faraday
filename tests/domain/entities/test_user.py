@@ -18,7 +18,7 @@ def test_user_creation():
     created_at = datetime.now()
     updated_at = datetime.now()
     last_login = datetime.now()
-    
+
     # Act
     user = User(
         id=user_id,
@@ -28,7 +28,7 @@ def test_user_creation():
         updated_at=updated_at,
         last_login=last_login,
     )
-    
+
     # Assert
     assert user.id == user_id
     assert user.email == email
@@ -46,14 +46,14 @@ def test_user_default_values():
     user_id = uuid.uuid4()
     email = "test@example.com"
     hashed_password = "hashed_password_string"
-    
+
     # Act
     user = User(
         id=user_id,
         email=email,
         hashed_password=hashed_password,
     )
-    
+
     # Assert
     assert user.is_active is True
     assert user.is_admin is False
@@ -68,7 +68,7 @@ def test_user_admin_flag():
     user_id = uuid.uuid4()
     email = "admin@example.com"
     hashed_password = "hashed_password_string"
-    
+
     # Act
     user = User(
         id=user_id,
@@ -76,7 +76,7 @@ def test_user_admin_flag():
         hashed_password=hashed_password,
         is_admin=True,
     )
-    
+
     # Assert
     assert user.is_admin is True
 
@@ -87,7 +87,7 @@ def test_user_inactive_flag():
     user_id = uuid.uuid4()
     email = "inactive@example.com"
     hashed_password = "hashed_password_string"
-    
+
     # Act
     user = User(
         id=user_id,
@@ -95,7 +95,7 @@ def test_user_inactive_flag():
         hashed_password=hashed_password,
         is_active=False,
     )
-    
+
     # Assert
     assert user.is_active is False
 
@@ -106,7 +106,7 @@ def test_user_invalid_email():
     user_id = uuid.uuid4()
     invalid_email = "not_an_email"
     hashed_password = "hashed_password_string"
-    
+
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         User(
@@ -114,7 +114,7 @@ def test_user_invalid_email():
             email=invalid_email,
             hashed_password=hashed_password,
         )
-    
+
     assert "email" in str(exc_info.value)
 
 
@@ -124,7 +124,7 @@ def test_user_empty_email():
     user_id = uuid.uuid4()
     empty_email = ""
     hashed_password = "hashed_password_string"
-    
+
     # Act & Assert
     with pytest.raises(ValidationError) as exc_info:
         User(
@@ -132,5 +132,5 @@ def test_user_empty_email():
             email=empty_email,
             hashed_password=hashed_password,
         )
-    
+
     assert "Email cannot be empty" in str(exc_info.value)
