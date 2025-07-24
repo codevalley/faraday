@@ -16,7 +16,7 @@
   - Write unit tests for domain entities using pytest and validation logic
   - _Requirements: 1.1, 1.3, 5.3_
 
-- [ ] 3. Create database infrastructure with repository pattern
+- [x] 3. Create database infrastructure with repository pattern
   - Set up PostgreSQL database connection using SQLAlchemy with async support
   - Implement PostgreSQL-based ThoughtRepository with CRUD operations using SQLAlchemy ORM
   - Implement PostgreSQL-based UserRepository with authentication support
@@ -24,7 +24,7 @@
   - Write integration tests for repository implementations using pytest-asyncio
   - _Requirements: 1.1, 4.2, 5.1_
 
-- [ ] 4. Implement LLM-based entity extraction service
+- [x] 4. Implement LLM-based entity extraction service
   - Create LLMEntityExtractionService implementing EntityExtractionService ABC
   - Design structured prompts for entity extraction with Pydantic response models
   - Implement OpenAI API integration using openai Python library with async support
@@ -32,7 +32,7 @@
   - Write unit tests using pytest for entity extraction accuracy and error handling
   - _Requirements: 1.3, 1.4, 1.5_
 
-- [ ] 5. Build vector storage infrastructure for semantic search
+- [x] 5. Build vector storage infrastructure for semantic search
   - Implement vector store interface and Pinecone implementation
   - Create embedding generation service using OpenAI embeddings API
   - Implement vector indexing for thoughts and semantic entries

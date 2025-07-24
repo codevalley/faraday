@@ -1,1 +1,1 @@
-"""Test package for the Personal Semantic Engine."""
+"""Tests package."""

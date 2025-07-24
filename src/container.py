@@ -8,7 +8,9 @@ import os
 
 from dependency_injector import containers, providers
 
+from src.domain.services.embedding_service import EmbeddingService
 from src.domain.services.entity_extraction_service import EntityExtractionService
+from src.domain.services.vector_store_service import VectorStoreService
 from src.infrastructure.database.connection import Database
 from src.infrastructure.llm.config import LLMConfigLoader
 from src.infrastructure.llm.entity_extraction_service import LLMEntityExtractionService
@@ -16,6 +18,8 @@ from src.infrastructure.llm.llm_service import LLMService
 from src.infrastructure.repositories.semantic_entry_repository import PostgreSQLSemanticEntryRepository
 from src.infrastructure.repositories.thought_repository import PostgreSQLThoughtRepository
 from src.infrastructure.repositories.user_repository import PostgreSQLUserRepository
+from src.infrastructure.services.embedding_service import OpenAIEmbeddingService
+from src.infrastructure.services.vector_store_service import PineconeVectorStore
 
 
 class Container(containers.DeclarativeContainer):
@@ -55,6 +59,17 @@ class Container(containers.DeclarativeContainer):
     entity_extraction_service = providers.Singleton(
         LLMEntityExtractionService,
         llm_service=llm_service,
+    )
+    
+    embedding_service = providers.Singleton(
+        OpenAIEmbeddingService,
+        api_key=os.getenv("OPENAI_API_KEY"),
+    )
+    
+    vector_store_service = providers.Singleton(
+        PineconeVectorStore,
+        api_key=os.getenv("PINECONE_API_KEY"),
+        environment=os.getenv("PINECONE_ENVIRONMENT"),
     )
 
     # Use cases
