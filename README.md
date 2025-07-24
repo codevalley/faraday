@@ -1,120 +1,243 @@
-# Personal Semantic Engine
+# Personal Semantic Engine (Faraday)
 
-A personal knowledge management system with semantic search capabilities.
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/codevalley/faraday/releases/tag/v0.2.0)
+[![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Database Setup
+A unified personal data repository that transforms scattered thoughts, notes, and information into a searchable, intelligent knowledge base using semantic understanding and AI-powered insights.
 
-1. Create a `.env` file based on `.env.example`:
+## 🚀 Features
 
+### ✅ Core Infrastructure (v0.2.0)
+- **Thought Capture**: Store and organize personal thoughts, notes, and ideas
+- **Semantic Understanding**: AI-powered entity extraction using LLM models
+- **Vector Storage**: Semantic search using OpenAI embeddings and Pinecone
+- **Knowledge Mapping**: Extract and store semantic relationships
+- **Clean Architecture**: Domain-driven design with SOLID principles
+
+### 🔄 In Development (v0.3.0)
+- **REST API**: Complete API endpoints for all functionality
+- **Advanced Search**: Natural language query processing
+- **Knowledge Graphs**: Visualize connections between ideas and concepts
+- **Real-time Processing**: Live semantic analysis and indexing
+
+### 🎯 Planned Features
+- **Privacy-First**: Your data stays under your control
+- **Multi-modal Support**: Text, images, and documents
+- **Export/Import**: Data portability and backup
+- **Analytics**: Insights into your thinking patterns
+
+## 🏗️ Architecture
+
+Built with clean architecture principles ensuring maintainability and testability:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Presentation  │    │   Application   │    │     Domain      │
+│                 │    │                 │    │                 │
+│ • FastAPI       │───▶│ • Use Cases     │───▶│ • Entities      │
+│ • REST APIs     │    │ • Workflows     │    │ • Repositories  │
+│ • CLI Tools     │    │ • Orchestration │    │ • Services      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+┌─────────────────────────────────────────────────────┘
+│
+▼
+┌─────────────────┐
+│ Infrastructure  │
+│                 │
+│ • PostgreSQL    │
+│ • OpenAI API    │
+│ • Pinecone      │
+│ • LiteLLM       │
+└─────────────────┘
+```
+
+## 🛠️ Tech Stack
+
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy, Pydantic
+- **Database**: PostgreSQL with async support
+- **AI/ML**: OpenAI GPT models, LiteLLM, vector embeddings
+- **Vector DB**: Pinecone for semantic search
+- **Testing**: pytest, pytest-asyncio, comprehensive coverage
+- **Code Quality**: Black, isort, mypy, pre-commit hooks
+- **Dependency Management**: Poetry
+- **Architecture**: Clean Architecture, Domain-Driven Design
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 13+
+- Poetry (for dependency management)
+- OpenAI API key
+- Pinecone account (for vector storage)
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/codevalley/faraday.git
+cd faraday
+```
+
+2. **Install dependencies:**
+```bash
+poetry install
+```
+
+3. **Set up environment variables:**
 ```bash
 cp .env.example .env
 ```
 
-2. Update the database connection string in `.env`:
-
-```
-DATABASE_URL=postgresql+asyncpg://username:password@localhost/personal_semantic_engine
-```
-
-3. Initialize the database:
-
+Edit `.env` with your configuration:
 ```bash
-python scripts/init_db.py
-```
+# Database
+DATABASE_URL=postgresql+asyncpg://postgres:password@localhost/faraday
+TEST_DATABASE_URL=postgresql+asyncpg://postgres:password@localhost/faraday_test
 
-## LLM Configuration
-
-The Personal Semantic Engine uses LiteLLM to provide a unified interface for multiple LLM providers. This allows you to easily switch between different models from OpenAI, Anthropic, DeepSeek, and others.
-
-### Environment Variables
-
-Configure your LLM settings in the `.env` file:
-
-```
-# LLM Configuration
-LLM_MODEL=gpt-4                # Default model to use
-LLM_TEMPERATURE=0.0            # Temperature for generation (0.0 = deterministic)
-LLM_MAX_TOKENS=4096            # Maximum tokens to generate
-
-# API Keys for different providers
+# OpenAI
 OPENAI_API_KEY=your-openai-api-key-here
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-DEEPSEEK_API_KEY=your-deepseek-api-key-here
+
+# Pinecone
+PINECONE_API_KEY=your-pinecone-api-key-here
+PINECONE_ENVIRONMENT=your-pinecone-environment-here
+
+# LLM Configuration
+LLM_MODEL=gpt-4
+LLM_TEMPERATURE=0.0
 ```
 
-### Customizing Prompts
-
-All prompts are stored as external files in `src/infrastructure/llm/prompts/` and can be modified without changing code:
-
-1. **System Prompts**: `entity_extraction_system.txt` - Contains instructions for the LLM
-2. **User Prompts**: `entity_extraction.txt` - Template for user prompts with placeholders
-3. **JSON Schemas**: `entity_extraction_schema.json` - Schema for structured LLM output
-
-### Adding New LLM Providers
-
-To add support for a new LLM provider:
-
-1. Update `src/infrastructure/llm/config/llm_config.json` with the new provider and models
-2. Add the appropriate API key to your `.env` file
-3. The LiteLLM library will handle the rest!
-
-Example configuration:
-
-```json
-{
-  "providers": {
-    "new-provider": {
-      "models": {
-        "new-model-name": {
-          "description": "Description of the new model",
-          "max_tokens": 4096,
-          "default_temperature": 0.0
-        }
-      }
-    }
-  }
-}
+4. **Initialize the database:**
+```bash
+poetry run python scripts/init_db.py
 ```
 
-### Testing Different Models
-
-To test different LLM models:
-
-1. Update the `LLM_MODEL` environment variable in `.env`
-2. Or specify the model directly when creating the LLMService:
-
-```python
-llm_service = LLMService(model="claude-3-opus")
+5. **Run migrations:**
+```bash
+poetry run alembic upgrade head
 ```
 
-## Running Tests
+6. **Verify installation:**
+```bash
+poetry run python verify_vector_implementation.py
+```
 
-To run the repository integration tests:
+## 🧪 Development
+
+### Running Tests
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-asyncio
+# Run vector storage tests
+poetry run python tests/infrastructure/services/run_tests.py
 
-# Run tests
-pytest tests/infrastructure/repositories/
+# Run architecture compliance check
+poetry run python check_architecture.py
+
+# Run all verification
+poetry run python verify_vector_implementation.py
 ```
 
-## Database Migrations
-
-To create a new migration:
+### Code Quality
 
 ```bash
-alembic revision -m "description_of_changes" --autogenerate
+# Pre-commit quality checks
+poetry run python scripts/pre_commit_check.py
+
+# Format code
+poetry run black .
+poetry run isort .
+
+# Type checking
+poetry run mypy src/ --ignore-missing-imports
 ```
 
-To apply migrations:
+### Version Management
 
 ```bash
-alembic upgrade head
+# Check current version
+poetry run python scripts/version_manager.py --current
+
+# Bump version
+poetry run python scripts/version_manager.py --bump minor
+
+# Create release tag
+poetry run python scripts/version_manager.py --tag --message "Release v0.3.0"
 ```
 
-To downgrade:
+## 📊 Current Status
 
-```bash
-alembic downgrade -1  # Go back one revision
-```
+### ✅ Completed (v0.2.0)
+- [x] Core domain entities and repositories
+- [x] LLM integration for entity extraction
+- [x] Vector storage infrastructure (OpenAI + Pinecone)
+- [x] Semantic search capabilities
+- [x] Comprehensive test suite
+- [x] Clean architecture compliance
+- [x] Version control standards
+
+### 🔄 In Progress (v0.3.0)
+- [ ] REST API implementation
+- [ ] API documentation with OpenAPI
+- [ ] Rate limiting and security
+- [ ] Client SDK development
+
+### 🎯 Roadmap
+- **v0.4.0**: Advanced Features (clustering, insights, export)
+- **v1.0.0**: Production Release (monitoring, deployment, docs)
+
+## 🤝 Contributing
+
+We follow strict version control standards and code quality practices:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feat/amazing-feature`
+3. **Follow our standards**: Check `.kiro/steering/version-control-standards.md`
+4. **Run quality checks**: `poetry run python scripts/pre_commit_check.py`
+5. **Commit with conventional format**: `feat: add amazing feature`
+6. **Submit a pull request**
+
+### Commit Standards
+
+We use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` New features
+- `fix:` Bug fixes  
+- `docs:` Documentation changes
+- `style:` Code formatting
+- `refactor:` Code restructuring
+- `test:` Adding tests
+- `chore:` Maintenance tasks
+
+## 📈 Performance & Quality
+
+- **Test Coverage**: 100% for vector services
+- **Architecture**: Clean Architecture compliance verified
+- **Code Quality**: Black + isort + mypy
+- **Type Safety**: Complete type annotations
+- **Documentation**: Comprehensive docstrings and guides
+
+## 🔒 Security & Privacy
+
+- **API Keys**: Secure environment variable management
+- **Data Isolation**: User-scoped vector operations
+- **Input Validation**: Pydantic models with validation
+- **Error Handling**: Domain-specific exceptions
+
+## 📚 Documentation
+
+- [Version Control Standards](.kiro/steering/version-control-standards.md)
+- [Vector Implementation Summary](VECTOR_IMPLEMENTATION_SUMMARY.md)
+- [LLM Configuration Guide](docs/llm_configuration_guide.md)
+- [Changelog](CHANGELOG.md)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with clean architecture principles
+- Inspired by domain-driven design
+- Powered by OpenAI and Pinecone technologies
