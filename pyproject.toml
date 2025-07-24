@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "faraday-semantic-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Personal Semantic Engine for unified personal data repository"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
