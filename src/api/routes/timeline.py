@@ -20,6 +20,7 @@ from src.domain.exceptions import TimelineError, TimelineQueryError
 from src.infrastructure.middleware.authentication_middleware import (
     AuthenticationMiddleware,
 )
+from src.api.documentation import TIMELINE_EXAMPLES, COMMON_ERROR_EXAMPLES
 
 
 def create_timeline_router(
@@ -44,10 +45,49 @@ def create_timeline_router(
     @router.get(
         "",
         response_model=TimelineResponse,
+        summary="Get chronological timeline",
+        description="""
+        Retrieve a chronological timeline of user's thoughts and activities with entity relationships.
+        
+        This endpoint provides a time-ordered view of personal data with intelligent grouping:
+        
+        **Timeline Features:**
+        - **Chronological Ordering**: Thoughts sorted by timestamp (newest or oldest first)
+        - **Entity Relationships**: Visual connections between related entities
+        - **Smart Grouping**: Related entries grouped by time proximity and shared entities
+        - **Multi-source Integration**: Combines thoughts with future external data sources
+        - **Interactive Elements**: Entities are clickable for further exploration
+        
+        **Filtering Capabilities:**
+        - **Date Range**: Filter by specific time periods
+        - **Entity Types**: Show only entries with specific entity types
+        - **Data Sources**: Filter by data source (thoughts, future integrations)
+        - **Tags**: Filter by user-defined tags
+        - **Custom Metadata**: Filter by custom fields
+        
+        **Grouping Logic:**
+        - Entries within 1 hour with shared entities are grouped
+        - Location-based grouping for co-located activities
+        - Topic-based grouping using semantic similarity
+        - User can enable/disable grouping via parameters
+        
+        **Performance:**
+        - Lazy loading for large timelines
+        - Efficient pagination with cursor-based navigation
+        - Cached results for frequently accessed ranges
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid query parameters"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            422: {"model": ErrorResponse, "description": "Timeline query parsing failed"},
+            200: {
+                "description": "Timeline retrieved successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "timeline": TIMELINE_EXAMPLES["timeline_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_timeline(
@@ -158,9 +198,50 @@ def create_timeline_router(
     @router.get(
         "/summary",
         response_model=TimelineSummaryResponse,
+        summary="Get timeline summary statistics",
+        description="""
+        Generate comprehensive summary statistics and insights about user's timeline data.
+        
+        This endpoint provides analytical insights into personal data patterns:
+        
+        **Summary Statistics:**
+        - **Total Entries**: Count of all timeline entries
+        - **Date Range**: Earliest and latest entry timestamps
+        - **Entity Counts**: Breakdown by entity type (people, places, activities)
+        - **Activity Patterns**: Most active time periods and days
+        - **Top Entities**: Most frequently mentioned people, places, activities
+        
+        **Analytical Insights:**
+        - **Temporal Patterns**: Peak activity hours and days
+        - **Entity Relationships**: Most connected entities
+        - **Content Trends**: Evolving topics and interests over time
+        - **Mood Analysis**: Emotional patterns and trends
+        - **Location Analysis**: Most visited places and travel patterns
+        
+        **Use Cases:**
+        - Personal analytics dashboard
+        - Data visualization preparation
+        - Habit and pattern recognition
+        - Goal tracking and progress monitoring
+        - Life logging insights
+        
+        **Performance:**
+        - Summary data is pre-computed and cached
+        - Updates incrementally as new data is added
+        - Fast response times for dashboard displays
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Timeline summary generation failed"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
+            200: {
+                "description": "Timeline summary generated successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "summary": TIMELINE_EXAMPLES["timeline_summary_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_timeline_summary(
@@ -198,10 +279,81 @@ def create_timeline_router(
     @router.get(
         "/entries/{entry_id}/related",
         response_model=RelatedEntriesResponse,
+        summary="Get related timeline entries",
+        description="""
+        Find and return timeline entries that are related to a specific entry through various relationships.
+        
+        This endpoint discovers connections between timeline entries using multiple relationship types:
+        
+        **Relationship Types:**
+        - **Entity Overlap**: Entries sharing common entities (people, places, activities)
+        - **Temporal Proximity**: Entries close in time (within hours or days)
+        - **Semantic Similarity**: Entries with similar content or themes
+        - **Location Proximity**: Entries from nearby geographic locations
+        - **Causal Relationships**: Entries that reference or follow up on others
+        
+        **Discovery Algorithm:**
+        1. **Entity Analysis**: Find entries with shared entities
+        2. **Temporal Analysis**: Identify time-clustered entries
+        3. **Semantic Analysis**: Use embeddings to find similar content
+        4. **Geographic Analysis**: Match location metadata
+        5. **Reference Analysis**: Detect explicit references between entries
+        6. **Scoring**: Rank relationships by strength and relevance
+        
+        **Relationship Scoring:**
+        - Entity overlap: High weight for shared people/places
+        - Temporal proximity: Decay function based on time distance
+        - Semantic similarity: Vector cosine similarity
+        - Location proximity: Geographic distance calculation
+        - User interaction: Boost for frequently accessed relationships
+        
+        **Use Cases:**
+        - Content exploration and discovery
+        - Relationship visualization
+        - Context understanding
+        - Memory assistance and recall
+        - Pattern recognition in personal data
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid request parameters"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            404: {"model": ErrorResponse, "description": "Entry not found"},
+            200: {
+                "description": "Related entries found successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "related_entries": {
+                                "summary": "Related timeline entries",
+                                "value": {
+                                    "entry_id": "770e8400-e29b-41d4-a716-446655440000",
+                                    "related_entries": [
+                                        {
+                                            "id": "770e8400-e29b-41d4-a716-446655440001",
+                                            "thought": {
+                                                "id": "550e8400-e29b-41d4-a716-446655440001",
+                                                "content": "Follow-up meeting with Sarah scheduled for next week to finalize the project details.",
+                                                "timestamp": "2024-01-16T09:00:00Z",
+                                                "metadata": {
+                                                    "tags": ["work", "follow-up"],
+                                                    "mood": "focused"
+                                                },
+                                                "semantic_entries": [],
+                                                "created_at": "2024-01-16T09:00:00Z",
+                                                "updated_at": "2024-01-16T09:00:00Z"
+                                            },
+                                            "timestamp": "2024-01-16T09:00:00Z",
+                                            "entities": [],
+                                            "connections": [],
+                                            "grouped_with": [],
+                                            "data_source": "thought"
+                                        }
+                                    ],
+                                    "total_count": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_related_entries(

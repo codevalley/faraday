@@ -23,6 +23,7 @@ from src.domain.exceptions import EntityExtractionError, ThoughtNotFoundError
 from src.infrastructure.middleware.authentication_middleware import (
     AuthenticationMiddleware,
 )
+from src.api.documentation import THOUGHTS_EXAMPLES, COMMON_ERROR_EXAMPLES
 
 
 def create_thoughts_router(
@@ -56,11 +57,58 @@ def create_thoughts_router(
         "",
         response_model=ThoughtResponse,
         status_code=status.HTTP_201_CREATED,
+        summary="Create a new thought",
+        description="""
+        Create a new thought entry with automatic entity extraction and metadata capture.
+        
+        This endpoint processes plain English text to extract semantic entities such as:
+        - **People**: Names and references to individuals
+        - **Locations**: Places, addresses, and geographic references  
+        - **Activities**: Actions, events, and behaviors
+        - **Emotions**: Feelings and emotional states
+        - **Dates**: Temporal references and time expressions
+        - **Organizations**: Companies, institutions, and groups
+        
+        The system also captures optional metadata including location coordinates,
+        weather conditions, mood, tags, and custom fields for enhanced context.
+        
+        **Processing Pipeline:**
+        1. Content validation and sanitization
+        2. LLM-based entity extraction with confidence scoring
+        3. Metadata enrichment and validation
+        4. Vector embedding generation for semantic search
+        5. Storage in both relational and vector databases
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid input"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            422: {"model": ErrorResponse, "description": "Entity extraction failed"},
+            201: {
+                "description": "Thought created successfully with extracted entities",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "successful_creation": THOUGHTS_EXAMPLES["create_thought_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
+        openapi_extra={
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "with_metadata": THOUGHTS_EXAMPLES["create_thought_request"],
+                            "simple_thought": {
+                                "summary": "Simple thought without metadata",
+                                "value": {
+                                    "content": "Just finished reading a great book about artificial intelligence."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     )
     async def create_thought(
         request: CreateThoughtRequest,
@@ -109,9 +157,39 @@ def create_thoughts_router(
     @router.get(
         "",
         response_model=ThoughtListResponse,
+        summary="Get user's thoughts",
+        description="""
+        Retrieve a paginated list of the authenticated user's thoughts with their semantic entries.
+        
+        This endpoint returns thoughts in reverse chronological order (newest first) by default.
+        Each thought includes:
+        - Original content and timestamp
+        - Extracted semantic entities with confidence scores
+        - Metadata (location, weather, mood, tags, custom fields)
+        - Creation and modification timestamps
+        
+        **Pagination:**
+        - Use `skip` parameter to offset results for pagination
+        - Use `limit` parameter to control page size (max 100)
+        - Response includes total count for pagination calculations
+        
+        **Performance Notes:**
+        - Results are cached for frequently accessed pages
+        - Large result sets are automatically paginated
+        - Consider using search endpoints for filtered queries
+        """,
         responses={
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            400: {"model": ErrorResponse, "description": "Invalid pagination parameters"},
+            200: {
+                "description": "Thoughts retrieved successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "thoughts_list": THOUGHTS_EXAMPLES["thoughts_list_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_thoughts(
@@ -164,10 +242,40 @@ def create_thoughts_router(
     @router.get(
         "/{thought_id}",
         response_model=ThoughtResponse,
+        summary="Get a specific thought",
+        description="""
+        Retrieve a specific thought by its unique identifier with complete entity details.
+        
+        This endpoint returns the full thought record including:
+        - Complete content and metadata
+        - All extracted semantic entities with context
+        - Confidence scores for each entity
+        - Relationship information between entities
+        - Complete audit trail (created/updated timestamps)
+        
+        **Access Control:**
+        - Users can only access their own thoughts
+        - Admin users can access any thought
+        - Returns 403 Forbidden for unauthorized access attempts
+        
+        **Use Cases:**
+        - Detailed thought inspection and analysis
+        - Entity relationship exploration
+        - Content editing preparation
+        - Audit and debugging purposes
+        """,
         responses={
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            403: {"model": ErrorResponse, "description": "Access denied"},
-            404: {"model": ErrorResponse, "description": "Thought not found"},
+            200: {
+                "description": "Thought retrieved successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "thought_detail": THOUGHTS_EXAMPLES["create_thought_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_thought(
@@ -218,13 +326,71 @@ def create_thoughts_router(
     @router.put(
         "/{thought_id}",
         response_model=ThoughtResponse,
+        summary="Update a thought",
+        description="""
+        Update an existing thought with automatic re-processing of entities and metadata.
+        
+        When a thought is updated, the system performs complete re-analysis:
+        - **Content Re-processing**: New entity extraction if content changed
+        - **Metadata Updates**: Merge new metadata with existing data
+        - **Vector Re-indexing**: Update semantic search embeddings
+        - **Relationship Updates**: Recalculate entity relationships
+        - **Audit Trail**: Maintain complete change history
+        
+        **Update Behavior:**
+        - Partial updates supported (only provide fields to change)
+        - Null values remove existing data
+        - Entity extraction runs on content changes
+        - Metadata is merged, not replaced entirely
+        - Original timestamp preserved, updated_at modified
+        
+        **Performance Impact:**
+        - Content changes trigger LLM processing (2-5 seconds)
+        - Metadata-only updates are near-instantaneous
+        - Vector re-indexing happens asynchronously
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid input"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            403: {"model": ErrorResponse, "description": "Access denied"},
-            404: {"model": ErrorResponse, "description": "Thought not found"},
-            422: {"model": ErrorResponse, "description": "Entity extraction failed"},
+            200: {
+                "description": "Thought updated successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "updated_thought": THOUGHTS_EXAMPLES["create_thought_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
+        openapi_extra={
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "content_update": {
+                                "summary": "Update thought content",
+                                "value": {
+                                    "content": "Had an amazing meeting with Sarah at the new coffee shop downtown. We discussed the project proposal in detail and I'm very excited about our collaboration."
+                                }
+                            },
+                            "metadata_update": {
+                                "summary": "Update only metadata",
+                                "value": {
+                                    "metadata": {
+                                        "mood": "excited",
+                                        "tags": ["work", "meeting", "collaboration", "project"],
+                                        "custom": {
+                                            "follow_up": "scheduled",
+                                            "priority": "high"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     )
     async def update_thought(
         thought_id: UUID,
@@ -285,10 +451,40 @@ def create_thoughts_router(
     @router.delete(
         "/{thought_id}",
         status_code=status.HTTP_204_NO_CONTENT,
+        summary="Delete a thought",
+        description="""
+        Permanently delete a thought and all its associated data.
+        
+        This operation performs complete cleanup:
+        - **Thought Record**: Remove from primary database
+        - **Semantic Entities**: Delete all extracted entities
+        - **Vector Embeddings**: Remove from semantic search index
+        - **Relationships**: Clean up entity relationship mappings
+        - **Timeline Entries**: Remove from chronological views
+        - **Search Index**: Update full-text search indices
+        
+        **Important Notes:**
+        - This operation is **irreversible**
+        - All associated data is permanently deleted
+        - Search results will no longer include this thought
+        - Timeline views will be updated automatically
+        - Related entity counts will be recalculated
+        
+        **Access Control:**
+        - Users can only delete their own thoughts
+        - Admin users can delete any thought
+        - Returns 403 Forbidden for unauthorized attempts
+        
+        **Performance:**
+        - Deletion is processed asynchronously
+        - Search indices updated in background
+        - Returns immediately after database deletion
+        """,
         responses={
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            403: {"model": ErrorResponse, "description": "Access denied"},
-            404: {"model": ErrorResponse, "description": "Thought not found"},
+            204: {
+                "description": "Thought deleted successfully"
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def delete_thought(

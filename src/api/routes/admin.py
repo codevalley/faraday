@@ -21,6 +21,7 @@ from src.domain.exceptions import UserAlreadyExistsError
 from src.infrastructure.middleware.authentication_middleware import (
     AuthenticationMiddleware,
 )
+from src.api.documentation import ADMIN_EXAMPLES, COMMON_ERROR_EXAMPLES
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -45,12 +46,51 @@ async def get_admin_user(request: Request) -> User:
     "/users",
     response_model=UsersListResponse,
     summary="Get all users",
-    description="Retrieve a paginated list of all users in the system. Admin access required.",
+    description="""
+    Retrieve a comprehensive, paginated list of all users in the system with their status information.
+    
+    This endpoint provides administrative access to user management data:
+    
+    **User Information:**
+    - **Basic Details**: ID, email, creation/update timestamps
+    - **Status Flags**: Active status, admin privileges
+    - **Activity Data**: Last login timestamp, account activity
+    - **Audit Trail**: Account creation and modification history
+    
+    **Access Control:**
+    - Requires admin-level authentication
+    - Returns 403 Forbidden for non-admin users
+    - Includes audit logging for security compliance
+    
+    **Pagination:**
+    - Use `skip` and `limit` parameters for pagination
+    - Default limit is 100 users per page
+    - Total count included for pagination calculations
+    
+    **Use Cases:**
+    - User account management and oversight
+    - System administration and monitoring
+    - Compliance and audit reporting
+    - User activity analysis
+    - Account status management
+    
+    **Security Notes:**
+    - Sensitive data (passwords) are never included
+    - All admin actions are logged for audit trails
+    - Rate limiting applied to prevent abuse
+    """,
     responses={
-        200: {"description": "Users retrieved successfully"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Admin access required"},
-        500: {"description": "Internal server error"},
+        200: {
+            "description": "Users retrieved successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "users_list": ADMIN_EXAMPLES["users_list_response"]
+                    }
+                }
+            }
+        },
+        **COMMON_ERROR_EXAMPLES
     },
 )
 async def get_users(
@@ -95,15 +135,83 @@ async def get_users(
     response_model=CreateUserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new user",
-    description="Create a new user account. Admin access required.",
+    description="""
+    Create a new user account with specified permissions and status settings.
+    
+    This endpoint allows administrators to create user accounts with full control over:
+    
+    **Account Configuration:**
+    - **Email Address**: Unique identifier and login credential
+    - **Password**: Securely hashed using bcrypt with salt
+    - **Admin Status**: Grant or deny administrative privileges
+    - **Active Status**: Enable or disable account access
+    
+    **Security Features:**
+    - **Password Hashing**: Automatic bcrypt hashing with secure salt
+    - **Email Validation**: RFC-compliant email format validation
+    - **Duplicate Prevention**: Automatic check for existing email addresses
+    - **Audit Logging**: Complete creation audit trail
+    
+    **Validation Rules:**
+    - Email must be unique across the system
+    - Password must meet minimum security requirements
+    - Admin status can only be set by existing admins
+    - All fields are validated before account creation
+    
+    **Post-Creation:**
+    - Account is immediately available for login
+    - Welcome email sent if configured
+    - Audit log entry created for compliance
+    - User appears in admin user listings
+    
+    **Use Cases:**
+    - Onboarding new users to the system
+    - Creating admin accounts for team members
+    - Bulk user provisioning for organizations
+    - Testing and development account creation
+    """,
     responses={
-        201: {"description": "User created successfully"},
-        400: {"description": "Invalid request data"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Admin access required"},
-        409: {"description": "User already exists"},
-        500: {"description": "Internal server error"},
+        201: {
+            "description": "User created successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "created_user": ADMIN_EXAMPLES["create_user_response"]
+                    }
+                }
+            }
+        },
+        **COMMON_ERROR_EXAMPLES
     },
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "regular_user": ADMIN_EXAMPLES["create_user_request"],
+                        "admin_user": {
+                            "summary": "Create admin user",
+                            "value": {
+                                "email": "admin@example.com",
+                                "password": "secure_admin_password123",
+                                "is_admin": True,
+                                "is_active": True
+                            }
+                        },
+                        "inactive_user": {
+                            "summary": "Create inactive user",
+                            "value": {
+                                "email": "inactive@example.com",
+                                "password": "secure_password123",
+                                "is_admin": False,
+                                "is_active": False
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 )
 async def create_user(
     request: CreateUserRequest,
@@ -148,12 +256,85 @@ async def create_user(
     "/health",
     response_model=HealthCheckResponse,
     summary="System health check",
-    description="Get system health and status information. Admin access required.",
+    description="""
+    Comprehensive system health check providing detailed status of all system components.
+    
+    This endpoint performs real-time health checks across all system dependencies:
+    
+    **System Components Monitored:**
+    - **Database**: PostgreSQL connection, query performance, disk space
+    - **Vector Store**: Pinecone/Weaviate connectivity, index status, query latency
+    - **LLM Service**: OpenAI/Anthropic API availability, response times, rate limits
+    - **Cache Layer**: Redis connectivity, memory usage, hit rates
+    - **File Storage**: Disk space, permissions, backup status
+    - **External APIs**: Weather, geocoding, and other integrated services
+    
+    **Health Status Levels:**
+    - **Healthy**: All systems operational within normal parameters
+    - **Degraded**: Some non-critical issues detected, system functional
+    - **Unhealthy**: Critical issues detected, system may be impaired
+    
+    **Performance Metrics:**
+    - Response times for each component
+    - Error rates and success percentages
+    - Resource utilization (CPU, memory, disk)
+    - Queue depths and processing backlogs
+    
+    **System Statistics:**
+    - Total users, thoughts, and entities in system
+    - Processing rates and throughput metrics
+    - Storage utilization and growth trends
+    - System uptime and availability metrics
+    
+    **Use Cases:**
+    - System monitoring and alerting
+    - Performance optimization and tuning
+    - Capacity planning and scaling decisions
+    - Troubleshooting and diagnostics
+    - SLA compliance monitoring
+    """,
     responses={
-        200: {"description": "Health check completed"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Admin access required"},
-        500: {"description": "Health check failed"},
+        200: {
+            "description": "Health check completed successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "healthy_system": ADMIN_EXAMPLES["health_check_response"],
+                        "degraded_system": {
+                            "summary": "System with degraded performance",
+                            "value": {
+                                "timestamp": "2024-01-15T10:30:00Z",
+                                "status": "degraded",
+                                "services": {
+                                    "database": {
+                                        "status": "healthy",
+                                        "message": "Database connection successful",
+                                        "response_time_ms": 15
+                                    },
+                                    "vector_store": {
+                                        "status": "degraded",
+                                        "message": "High response times detected",
+                                        "response_time_ms": 450
+                                    },
+                                    "llm_service": {
+                                        "status": "healthy",
+                                        "message": "LLM service available",
+                                        "response_time_ms": 120
+                                    }
+                                },
+                                "statistics": {
+                                    "total_users": 150,
+                                    "total_thoughts": 2847,
+                                    "total_entities": 8934,
+                                    "system_uptime_hours": 72.5
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        **COMMON_ERROR_EXAMPLES
     },
 )
 async def get_system_health(

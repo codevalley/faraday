@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator, root_validator
 
 from src.domain.entities.semantic_entry import SemanticEntry
 from src.domain.entities.thought import GeoLocation, Thought, ThoughtMetadata, WeatherData
@@ -13,17 +13,77 @@ from src.domain.entities.thought import GeoLocation, Thought, ThoughtMetadata, W
 class GeoLocationRequest(BaseModel):
     """Request model for geographic location."""
 
-    latitude: float
-    longitude: float
-    name: Optional[str] = None
+    latitude: float = Field(
+        ..., 
+        ge=-90, 
+        le=90, 
+        description="Latitude coordinate (-90 to 90 degrees)",
+        example=40.7128
+    )
+    longitude: float = Field(
+        ..., 
+        ge=-180, 
+        le=180, 
+        description="Longitude coordinate (-180 to 180 degrees)",
+        example=-74.0060
+    )
+    name: Optional[str] = Field(
+        None, 
+        max_length=200,
+        description="Optional human-readable location name",
+        example="Downtown Coffee Shop"
+    )
+
+    @validator('name')
+    def validate_name(cls, v):
+        """Validate location name."""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+        return v
 
 
 class WeatherDataRequest(BaseModel):
     """Request model for weather information."""
 
-    temperature: Optional[float] = None
-    condition: Optional[str] = None
-    humidity: Optional[float] = None
+    temperature: Optional[float] = Field(
+        None, 
+        ge=-50, 
+        le=60, 
+        description="Temperature in Celsius (-50 to 60 degrees)",
+        example=22.5
+    )
+    condition: Optional[str] = Field(
+        None, 
+        max_length=50,
+        description="Weather condition description",
+        example="sunny"
+    )
+    humidity: Optional[float] = Field(
+        None, 
+        ge=0, 
+        le=100, 
+        description="Humidity percentage (0-100%)",
+        example=65.0
+    )
+
+    @validator('condition')
+    def validate_condition(cls, v):
+        """Validate weather condition."""
+        if v is not None:
+            v = v.strip().lower()
+            if not v:
+                return None
+            # List of valid weather conditions
+            valid_conditions = {
+                'sunny', 'cloudy', 'partly cloudy', 'overcast', 'rainy', 'drizzle',
+                'thunderstorm', 'snowy', 'foggy', 'windy', 'clear', 'hazy'
+            }
+            if v not in valid_conditions:
+                # Allow any condition but normalize it
+                pass
+        return v
 
 
 class ThoughtMetadataRequest(BaseModel):
@@ -69,9 +129,67 @@ class ThoughtMetadataRequest(BaseModel):
 class CreateThoughtRequest(BaseModel):
     """Request model for creating a thought."""
 
-    content: str = Field(..., min_length=1, description="The thought content")
-    metadata: Optional[ThoughtMetadataRequest] = None
-    timestamp: Optional[datetime] = None
+    content: str = Field(
+        ..., 
+        min_length=1, 
+        max_length=10000,
+        description="The thought content (1-10,000 characters)",
+        example="Had a great meeting with Sarah at the coffee shop downtown. We discussed the new project proposal and I'm feeling optimistic about the collaboration."
+    )
+    metadata: Optional[ThoughtMetadataRequest] = Field(
+        None,
+        description="Optional metadata including location, weather, mood, and tags"
+    )
+    timestamp: Optional[datetime] = Field(
+        None,
+        description="Optional timestamp for the thought (defaults to current time if not provided)"
+    )
+
+    @validator('content')
+    def validate_content(cls, v):
+        """Validate thought content."""
+        if not v.strip():
+            raise ValueError('Content cannot be empty or only whitespace')
+        
+        # Check for potentially harmful content
+        if len(v.strip()) < 3:
+            raise ValueError('Content must be at least 3 characters long')
+            
+        return v.strip()
+
+    @validator('timestamp')
+    def validate_timestamp(cls, v):
+        """Validate timestamp is not in the future."""
+        if v and v > datetime.now():
+            raise ValueError('Timestamp cannot be in the future')
+        return v
+
+    class Config:
+        """Pydantic configuration."""
+        schema_extra = {
+            "example": {
+                "content": "Had a great meeting with Sarah at the coffee shop downtown. We discussed the new project proposal and I'm feeling optimistic about the collaboration.",
+                "metadata": {
+                    "location": {
+                        "latitude": 40.7128,
+                        "longitude": -74.0060,
+                        "name": "Downtown Coffee Shop"
+                    },
+                    "weather": {
+                        "temperature": 22.5,
+                        "condition": "sunny",
+                        "humidity": 65.0
+                    },
+                    "mood": "optimistic",
+                    "tags": ["work", "meeting", "collaboration"],
+                    "custom": {
+                        "project": "new-proposal",
+                        "priority": "high"
+                    }
+                },
+                "timestamp": "2024-01-15T14:30:00Z"
+            }
+        }
 
 
 class UpdateThoughtRequest(BaseModel):

@@ -13,9 +13,11 @@ from src.domain.entities.thought import ThoughtMetadata
 from src.domain.exceptions import EntityExtractionError
 from src.domain.services.entity_extraction_service import EntityExtractionService
 from src.infrastructure.llm.llm_service import LLMService
+from src.infrastructure.logging import LoggerMixin, log_function_call, log_external_api_call
+from src.infrastructure.retry import llm_retry
 
 
-class LLMEntityExtractionService(EntityExtractionService):
+class LLMEntityExtractionService(EntityExtractionService, LoggerMixin):
     """LLM-based implementation of the entity extraction service."""
 
     def __init__(
@@ -42,6 +44,8 @@ class LLMEntityExtractionService(EntityExtractionService):
         self._extraction_schema = self._load_json_schema(
             "entity_extraction_schema.json"
         )
+        
+        self.logger.info("LLM entity extraction service initialized")
 
     def _load_prompt(self, filename: str) -> str:
         """Load a prompt template from file.
@@ -75,6 +79,7 @@ class LLMEntityExtractionService(EntityExtractionService):
         except FileNotFoundError:
             return None
 
+    @llm_retry
     async def extract_entities(
         self,
         content: str,
@@ -94,10 +99,25 @@ class LLMEntityExtractionService(EntityExtractionService):
         Raises:
             EntityExtractionError: If extraction fails
         """
-        # Format the extraction prompt with content and metadata
-        formatted_prompt = self._format_extraction_prompt(content, metadata)
-
+        args = {
+            "content_length": len(content),
+            "thought_id": str(thought_id),
+            "has_metadata": metadata is not None,
+        }
+        
         try:
+            self.logger.info(
+                "Starting entity extraction",
+                extra={
+                    "thought_id": str(thought_id),
+                    "content_length": len(content),
+                    "has_metadata": metadata is not None,
+                }
+            )
+            
+            # Format the extraction prompt with content and metadata
+            formatted_prompt = self._format_extraction_prompt(content, metadata)
+
             # Call the LLM to extract entities
             extraction_result = await self._llm_service.generate(
                 prompt=formatted_prompt,
@@ -107,9 +127,31 @@ class LLMEntityExtractionService(EntityExtractionService):
             )
 
             # Convert the LLM response to SemanticEntry objects
-            return self._convert_to_semantic_entries(extraction_result, thought_id)
+            semantic_entries = self._convert_to_semantic_entries(extraction_result, thought_id)
+            
+            self.logger.info(
+                "Entity extraction completed",
+                extra={
+                    "thought_id": str(thought_id),
+                    "entities_extracted": len(semantic_entries),
+                    "entity_types": list(set(entry.entity_type.value for entry in semantic_entries)),
+                }
+            )
+            
+            log_function_call("extract_entities", args, semantic_entries)
+            return semantic_entries
 
         except Exception as e:
+            self.logger.error(
+                "Entity extraction failed",
+                extra={
+                    "thought_id": str(thought_id),
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            log_function_call("extract_entities", args, error=e)
             raise EntityExtractionError(f"Entity extraction failed: {str(e)}")
 
     def _format_extraction_prompt(

@@ -1,6 +1,7 @@
 """Pinecone vector store service implementation."""
 
 import os
+import time
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -12,6 +13,8 @@ from src.domain.services.vector_store_service import (
     VectorSearchResult as BaseVectorSearchResult,
 )
 from src.domain.services.vector_store_service import VectorStoreService
+from src.infrastructure.logging import LoggerMixin, log_function_call, log_external_api_call
+from src.infrastructure.retry import vector_store_retry
 
 
 class VectorSearchResult(BaseVectorSearchResult):
@@ -30,7 +33,7 @@ class VectorSearchResult(BaseVectorSearchResult):
         self.metadata = metadata
 
 
-class PineconeVectorStore(VectorStoreService):
+class PineconeVectorStore(VectorStoreService, LoggerMixin):
     """Implementation of VectorStoreService using Pinecone."""
 
     def __init__(
@@ -70,6 +73,16 @@ class PineconeVectorStore(VectorStoreService):
 
         # Get the index
         self.index = pinecone.Index(self.index_name)
+        
+        self.logger.info(
+            "Pinecone vector store initialized",
+            extra={
+                "index_name": self.index_name,
+                "namespace": self.namespace,
+                "dimension": self.dimension,
+                "environment": self.environment,
+            }
+        )
 
     def _ensure_index_exists(self) -> None:
         """Ensure the Pinecone index exists, creating it if necessary."""
@@ -85,6 +98,7 @@ class PineconeVectorStore(VectorStoreService):
         except Exception as e:
             raise VectorStoreError(f"Failed to ensure index exists: {str(e)}")
 
+    @vector_store_retry
     async def store_vector(
         self, id: str, vector: List[float], metadata: Dict[str, str]
     ) -> None:
@@ -98,14 +112,72 @@ class PineconeVectorStore(VectorStoreService):
         Raises:
             VectorStoreError: If storage fails
         """
+        args = {
+            "vector_id": id,
+            "vector_dimension": len(vector),
+            "metadata_keys": list(metadata.keys()),
+        }
+        start_time = time.time()
+        
         try:
+            self.logger.debug(
+                "Storing vector",
+                extra={
+                    "vector_id": id,
+                    "vector_dimension": len(vector),
+                    "metadata": metadata,
+                    "namespace": self.namespace,
+                }
+            )
+            
             self.index.upsert(
                 vectors=[{"id": id, "values": vector, "metadata": metadata}],
                 namespace=self.namespace,
             )
+            
+            duration = time.time() - start_time
+            self.logger.info(
+                "Vector stored successfully",
+                extra={
+                    "vector_id": id,
+                    "duration_seconds": duration,
+                }
+            )
+            
+            log_external_api_call(
+                service="pinecone",
+                endpoint="/vectors/upsert",
+                method="POST",
+                status_code=200,
+                duration=duration,
+            )
+            log_function_call("store_vector", args)
+            
         except Exception as e:
+            duration = time.time() - start_time
+            self.logger.error(
+                "Vector storage failed",
+                extra={
+                    "vector_id": id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "duration_seconds": duration,
+                },
+                exc_info=True,
+            )
+            
+            log_external_api_call(
+                service="pinecone",
+                endpoint="/vectors/upsert",
+                method="POST",
+                duration=duration,
+                error=e,
+            )
+            log_function_call("store_vector", args, error=e)
+            
             raise VectorStoreError(f"Failed to store vector: {str(e)}")
 
+    @vector_store_retry
     async def search(
         self,
         query_vector: List[float],
@@ -127,6 +199,14 @@ class PineconeVectorStore(VectorStoreService):
         Raises:
             VectorStoreError: If search fails
         """
+        args = {
+            "query_dimension": len(query_vector),
+            "top_k": top_k,
+            "entity_type": entity_type.value if entity_type else None,
+            "user_id": str(user_id) if user_id else None,
+        }
+        start_time = time.time()
+        
         try:
             # Build filter if needed
             filter_dict = {}
@@ -134,6 +214,15 @@ class PineconeVectorStore(VectorStoreService):
                 filter_dict["entity_type"] = entity_type.value
             if user_id:
                 filter_dict["user_id"] = str(user_id)
+
+            self.logger.debug(
+                "Searching vectors",
+                extra={
+                    "top_k": top_k,
+                    "filter": filter_dict,
+                    "namespace": self.namespace,
+                }
+            )
 
             # Execute search
             response = self.index.query(
@@ -152,8 +241,49 @@ class PineconeVectorStore(VectorStoreService):
                 )
                 results.append(result)
 
+            duration = time.time() - start_time
+            self.logger.info(
+                "Vector search completed",
+                extra={
+                    "results_count": len(results),
+                    "top_score": results[0].score if results else 0,
+                    "duration_seconds": duration,
+                }
+            )
+            
+            log_external_api_call(
+                service="pinecone",
+                endpoint="/query",
+                method="POST",
+                status_code=200,
+                duration=duration,
+            )
+            log_function_call("search", args, results)
+
             return results
+            
         except Exception as e:
+            duration = time.time() - start_time
+            self.logger.error(
+                "Vector search failed",
+                extra={
+                    "top_k": top_k,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "duration_seconds": duration,
+                },
+                exc_info=True,
+            )
+            
+            log_external_api_call(
+                service="pinecone",
+                endpoint="/query",
+                method="POST",
+                duration=duration,
+                error=e,
+            )
+            log_function_call("search", args, error=e)
+            
             raise VectorStoreError(f"Failed to search vectors: {str(e)}")
 
     async def delete_vectors(self, ids: List[str]) -> None:

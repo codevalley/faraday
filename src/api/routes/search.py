@@ -24,6 +24,7 @@ from src.domain.exceptions import SearchError, SearchQueryError
 from src.infrastructure.middleware.authentication_middleware import (
     AuthenticationMiddleware,
 )
+from src.api.documentation import SEARCH_EXAMPLES, COMMON_ERROR_EXAMPLES
 
 
 def create_search_router(
@@ -48,11 +49,84 @@ def create_search_router(
     @router.post(
         "",
         response_model=SearchResponse,
+        summary="Search thoughts semantically",
+        description="""
+        Perform advanced semantic search across user's personal data with hybrid ranking.
+        
+        This endpoint combines multiple search techniques for optimal results:
+        
+        **Search Methods:**
+        - **Semantic Search**: Vector similarity using embeddings (primary)
+        - **Keyword Matching**: Traditional full-text search (secondary)
+        - **Entity Filtering**: Filter by specific entity types and values
+        - **Metadata Filtering**: Filter by location, mood, tags, dates
+        - **Hybrid Ranking**: Combines semantic + keyword + recency + confidence scores
+        
+        **Query Processing:**
+        1. Query text is embedded using the same model as thoughts
+        2. Vector similarity search finds semantically related content
+        3. Keyword search identifies exact term matches
+        4. Entity filters are applied to narrow results
+        5. Results are ranked using weighted scoring algorithm
+        6. Matches are highlighted for user interface display
+        
+        **Ranking Algorithm:**
+        - Semantic similarity: 40% weight (vector cosine similarity)
+        - Keyword match: 30% weight (TF-IDF scoring)
+        - Recency: 20% weight (time-based decay)
+        - Confidence: 10% weight (entity extraction confidence)
+        
+        **Performance:**
+        - Typical response time: 50-200ms
+        - Results cached for common queries
+        - Pagination recommended for large result sets
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid search query"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
-            422: {"model": ErrorResponse, "description": "Search query parsing failed"},
+            200: {
+                "description": "Search completed successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "search_results": SEARCH_EXAMPLES["search_response"]
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
+        openapi_extra={
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "semantic_search": SEARCH_EXAMPLES["search_request"],
+                            "simple_search": {
+                                "summary": "Simple text search",
+                                "value": {
+                                    "query_text": "coffee meetings",
+                                    "include_raw_content": True,
+                                    "highlight_matches": True
+                                }
+                            },
+                            "entity_filtered_search": {
+                                "summary": "Search with entity filtering",
+                                "value": {
+                                    "query_text": "work discussions",
+                                    "entity_filter": {
+                                        "entity_types": ["person", "organization"],
+                                        "entity_values": ["Sarah", "Microsoft"]
+                                    },
+                                    "pagination": {
+                                        "page": 1,
+                                        "page_size": 20
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     )
     async def search_thoughts(
         request: SearchRequest,
@@ -115,9 +189,59 @@ def create_search_router(
     @router.get(
         "/suggestions",
         response_model=SearchSuggestionsResponse,
+        summary="Get search suggestions",
+        description="""
+        Get intelligent search suggestions based on partial query text and user's data.
+        
+        This endpoint provides autocomplete functionality by analyzing:
+        - **Entity Values**: Names, places, activities from user's thoughts
+        - **Common Terms**: Frequently used words and phrases
+        - **Historical Queries**: Previously successful search terms
+        - **Semantic Similarity**: Related concepts and synonyms
+        
+        **Suggestion Sources:**
+        1. Extracted entity values (people, places, activities)
+        2. Frequently occurring terms in user's content
+        3. Common search patterns from user history
+        4. Semantically related terms using embeddings
+        
+        **Ranking Criteria:**
+        - Frequency of occurrence in user's data
+        - Recency of last occurrence
+        - Semantic similarity to partial query
+        - Historical search success rate
+        
+        **Use Cases:**
+        - Search box autocomplete
+        - Query refinement suggestions
+        - Discovery of forgotten content
+        - Improved search experience
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid request parameters"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
+            200: {
+                "description": "Suggestions generated successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "suggestions": {
+                                "summary": "Search suggestions for partial query",
+                                "value": {
+                                    "suggestions": [
+                                        "meeting with Sarah",
+                                        "meetings about projects",
+                                        "coffee shop meetings",
+                                        "work meetings",
+                                        "team meetings"
+                                    ],
+                                    "query_text": "meet",
+                                    "limit": 5
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_search_suggestions(
@@ -176,9 +300,83 @@ def create_search_router(
     @router.get(
         "/entities",
         response_model=EntityListResponse,
+        summary="Get extracted entities",
+        description="""
+        Retrieve a comprehensive list of semantic entities extracted from user's thoughts.
+        
+        This endpoint provides access to the knowledge graph built from user's personal data:
+        
+        **Entity Types:**
+        - **Person**: Names and references to individuals
+        - **Location**: Places, addresses, geographic references
+        - **Activity**: Actions, events, behaviors, hobbies
+        - **Emotion**: Feelings, moods, emotional states
+        - **Date**: Temporal references, time expressions
+        - **Organization**: Companies, institutions, groups
+        - **Event**: Meetings, appointments, occasions
+        
+        **Entity Information:**
+        - Entity type and value
+        - Occurrence count across all thoughts
+        - Latest occurrence timestamp
+        - Average confidence score
+        - Related entities and relationships
+        
+        **Filtering Options:**
+        - Filter by specific entity types
+        - Pagination for large entity sets
+        - Sort by frequency, recency, or confidence
+        
+        **Use Cases:**
+        - Personal data analytics and insights
+        - Entity-based search and filtering
+        - Relationship discovery and mapping
+        - Data export and analysis
+        - Privacy and data management
+        """,
         responses={
-            400: {"model": ErrorResponse, "description": "Invalid request parameters"},
-            401: {"model": ErrorResponse, "description": "Authentication required"},
+            200: {
+                "description": "Entities retrieved successfully",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "entities_list": {
+                                "summary": "List of extracted entities",
+                                "value": {
+                                    "entities": [
+                                        {
+                                            "entity_type": "person",
+                                            "entity_value": "Sarah",
+                                            "count": 15,
+                                            "latest_occurrence": "2024-01-15T14:30:00Z",
+                                            "confidence_avg": 0.94
+                                        },
+                                        {
+                                            "entity_type": "location",
+                                            "entity_value": "coffee shop downtown",
+                                            "count": 8,
+                                            "latest_occurrence": "2024-01-15T14:30:00Z",
+                                            "confidence_avg": 0.87
+                                        },
+                                        {
+                                            "entity_type": "activity",
+                                            "entity_value": "meeting",
+                                            "count": 23,
+                                            "latest_occurrence": "2024-01-15T14:30:00Z",
+                                            "confidence_avg": 0.96
+                                        }
+                                    ],
+                                    "total_count": 3,
+                                    "entity_types_filter": ["person", "location", "activity"],
+                                    "skip": 0,
+                                    "limit": 100
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            **COMMON_ERROR_EXAMPLES
         },
     )
     async def get_entities(
