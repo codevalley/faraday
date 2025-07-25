@@ -1,4 +1,5 @@
-"""API routes for the Personal Semantic Engine.
+"""API routes for the Personal Semantic Engine."""
 
-This package contains the FastAPI route definitions for the RESTful API.
-"""
+from src.api.routes.thoughts import create_thoughts_router
+
+__all__ = ["create_thoughts_router"]

@@ -57,3 +57,88 @@ class AuthenticationError(DomainError):
 
     def __init__(self, message: str = "Invalid credentials"):
         super().__init__(message)
+
+
+class SearchError(DomainError):
+    """Raised when search operations fail."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Search operation failed: {message}")
+
+
+class SearchQueryError(DomainError):
+    """Raised when search query parsing or validation fails."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Search query error: {message}")
+
+
+class SearchIndexError(DomainError):
+    """Raised when search indexing operations fail."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Search indexing failed: {message}")
+
+
+class SearchRankingError(DomainError):
+    """Raised when search result ranking fails."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Search ranking failed: {message}")
+
+
+class UserAlreadyExistsError(DomainError):
+    """Raised when attempting to create a user that already exists."""
+
+    def __init__(self, email: str):
+        super().__init__(f"User with email {email} already exists")
+        self.email = email
+
+
+class UserRegistrationError(DomainError):
+    """Raised when user registration fails."""
+
+    def __init__(self, message: str):
+        super().__init__(f"User registration failed: {message}")
+
+
+class UserManagementError(DomainError):
+    """Raised when user management operations fail."""
+
+    def __init__(self, message: str):
+        super().__init__(f"User management operation failed: {message}")
+
+
+class TokenError(DomainError):
+    """Raised when token operations fail."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Token operation failed: {message}")
+
+
+class InvalidTokenError(TokenError):
+    """Raised when a token is invalid or expired."""
+
+    def __init__(self, message: str = "Invalid or expired token"):
+        super().__init__(message)
+
+
+class TimelineError(DomainError):
+    """Raised when timeline operations fail."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Timeline operation failed: {message}")
+
+
+class TimelineQueryError(DomainError):
+    """Raised when timeline query parsing or validation fails."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Timeline query error: {message}")
+
+
+class TimelineGroupingError(DomainError):
+    """Raised when timeline entry grouping fails."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Timeline grouping failed: {message}")

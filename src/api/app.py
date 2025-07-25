@@ -4,6 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.container import container
+from src.api.routes.thoughts import create_thoughts_router
+from src.api.routes.search import create_search_router
+from src.api.routes.timeline import create_timeline_router
+from src.api.routes.admin import router as admin_router
 
 
 def create_app() -> FastAPI:
@@ -27,13 +31,40 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
-    # Will be added as we implement them
-
     # Dependency injection
     app.container = container
+
+    # Include routers
+    thoughts_router = create_thoughts_router(
+        create_thought_usecase=container.create_thought_usecase(),
+        get_thoughts_usecase=container.get_thoughts_usecase(),
+        get_thought_by_id_usecase=container.get_thought_by_id_usecase(),
+        update_thought_usecase=container.update_thought_usecase(),
+        delete_thought_usecase=container.delete_thought_usecase(),
+        auth_middleware=container.auth_middleware(),
+    )
+    app.include_router(thoughts_router)
+
+    search_router = create_search_router(
+        search_thoughts_usecase=container.search_thoughts_usecase(),
+        auth_middleware=container.auth_middleware(),
+    )
+    app.include_router(search_router)
+
+    timeline_router = create_timeline_router(
+        get_timeline_usecase=container.get_timeline_usecase(),
+        auth_middleware=container.auth_middleware(),
+    )
+    app.include_router(timeline_router)
+
+    # Include admin router
+    app.include_router(admin_router)
 
     return app
 
 
-app = create_app()
+# Only create app if running as main module
+if __name__ == "__main__":
+    app = create_app()
+else:
+    app = None
