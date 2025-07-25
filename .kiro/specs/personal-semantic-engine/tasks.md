@@ -40,7 +40,7 @@
   - Write integration tests for vector storage and retrieval
   - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 6. Create thought processing use case and application service
+- [x] 6. Create thought processing use case and application service
   - Implement CreateThoughtUseCase orchestrating entity extraction and storage
   - Create GetThoughtsUseCase with pagination and user filtering
   - Implement UpdateThoughtUseCase with re-processing of entities
@@ -48,7 +48,7 @@
   - Write unit tests for use case business logic
   - _Requirements: 1.1, 1.2, 1.4, 1.5_
 
-- [ ] 7. Implement semantic search use case and service
+- [x] 7. Implement semantic search use case and service
   - Create SearchThoughtsUseCase with hybrid search strategy
   - Implement search query parsing and validation
   - Create search result ranking algorithm combining semantic and keyword scores
@@ -56,7 +56,7 @@
   - Write unit tests for search logic and ranking algorithms
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 8. Build authentication and user management infrastructure
+- [x] 8. Build authentication and user management infrastructure
   - Implement JWT-based authentication service
   - Create user registration and login endpoints
   - Implement password hashing and validation
