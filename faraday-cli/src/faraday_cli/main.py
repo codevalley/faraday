@@ -14,39 +14,46 @@ from faraday_cli.commands.thoughts import thoughts_group
 
 
 @click.group()
-@click.option('--config', help='Config file path')
-@click.option('--api-url', help='API server URL')
-@click.option('--json', 'json_output', is_flag=True, help='Output JSON')
-@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+@click.option("--config", help="Config file path")
+@click.option("--api-url", help="API server URL")
+@click.option("--json", "json_output", is_flag=True, help="Output JSON")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 @click.pass_context
-def cli(ctx: click.Context, config: Optional[str], api_url: Optional[str], 
-        json_output: bool, verbose: bool) -> None:
+def cli(
+    ctx: click.Context,
+    config: Optional[str],
+    api_url: Optional[str],
+    json_output: bool,
+    verbose: bool,
+) -> None:
     """Faraday Personal Semantic Engine CLI
-    
+
     A command-line interface for managing thoughts, performing semantic searches,
     and analyzing your personal knowledge base.
     """
     # Ensure context object exists
     ctx.ensure_object(dict)
-    
+
     # Initialize core components
     console = Console()
     config_manager = ConfigManager(config)
     auth_manager = AuthManager(config_manager.config_dir)
-    
+
     # Use provided API URL or fall back to config
-    effective_api_url = api_url or config_manager.get('api.url', 'http://localhost:8001')
+    effective_api_url = api_url or config_manager.get(
+        "api.url", "http://localhost:8001"
+    )
     api_client = APIClient(effective_api_url, auth_manager)
-    
+
     output_formatter = OutputFormatter(console, json_output)
-    
+
     # Store in context for subcommands
-    ctx.obj['config'] = config_manager
-    ctx.obj['api_client'] = api_client
-    ctx.obj['auth_manager'] = auth_manager
-    ctx.obj['output'] = output_formatter
-    ctx.obj['console'] = console
-    ctx.obj['verbose'] = verbose
+    ctx.obj["config"] = config_manager
+    ctx.obj["api_client"] = api_client
+    ctx.obj["auth_manager"] = auth_manager
+    ctx.obj["output"] = output_formatter
+    ctx.obj["console"] = console
+    ctx.obj["verbose"] = verbose
 
 
 # Register command groups
@@ -60,13 +67,13 @@ cli.add_command(thoughts_group)
 def version(ctx: click.Context) -> None:
     """Show version information."""
     from faraday_cli import __version__
-    
-    output = ctx.obj['output']
+
+    output = ctx.obj["output"]
     if output.json_mode:
         click.echo(f'{{"version": "{__version__}"}}')
     else:
         output.console.print(f"Faraday CLI version {__version__}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

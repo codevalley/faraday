@@ -16,20 +16,20 @@ def auth_group() -> None:
 
 
 @auth_group.command()
-@click.option('--email', prompt=True, help='Email address')
-@click.option('--password', prompt=True, hide_input=True, help='Password')
+@click.option("--email", prompt=True, help="Email address")
+@click.option("--password", prompt=True, hide_input=True, help="Password")
 @click.pass_context
 def login(ctx: click.Context, email: str, password: str) -> None:
     """Login to Faraday server."""
-    api_client: APIClient = ctx.obj['api_client']
-    output: OutputFormatter = ctx.obj['output']
-    
+    api_client: APIClient = ctx.obj["api_client"]
+    output: OutputFormatter = ctx.obj["output"]
+
     async def do_login():
         try:
             async with api_client:
                 token = await api_client.authenticate(email, password)
                 output.format_success(f"Successfully logged in as {email}")
-                
+
         except AuthenticationError as e:
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
@@ -39,7 +39,7 @@ def login(ctx: click.Context, email: str, password: str) -> None:
         except Exception as e:
             output.format_error(f"Unexpected error: {e}", "Error")
             ctx.exit(1)
-    
+
     asyncio.run(do_login())
 
 
@@ -47,13 +47,13 @@ def login(ctx: click.Context, email: str, password: str) -> None:
 @click.pass_context
 def logout(ctx: click.Context) -> None:
     """Logout from Faraday server."""
-    auth_manager: AuthManager = ctx.obj['auth_manager']
-    output: OutputFormatter = ctx.obj['output']
-    
+    auth_manager: AuthManager = ctx.obj["auth_manager"]
+    output: OutputFormatter = ctx.obj["output"]
+
     if not auth_manager.is_authenticated():
         output.format_error("You are not currently logged in.", "Authentication Error")
         ctx.exit(1)
-    
+
     auth_manager.clear_token()
     output.format_success("Successfully logged out")
 
@@ -62,13 +62,13 @@ def logout(ctx: click.Context) -> None:
 @click.pass_context
 def status(ctx: click.Context) -> None:
     """Show authentication status."""
-    auth_manager: AuthManager = ctx.obj['auth_manager']
-    output: OutputFormatter = ctx.obj['output']
-    
+    auth_manager: AuthManager = ctx.obj["auth_manager"]
+    output: OutputFormatter = ctx.obj["output"]
+
     if auth_manager.is_authenticated():
         token_info = auth_manager.get_token_info()
         if output.json_mode:
-            click.echo(click.get_text_stream('stdout').write(str(token_info)))
+            click.echo(click.get_text_stream("stdout").write(str(token_info)))
         else:
             output.console.print("[green]✅ Authenticated[/green]")
             if token_info and "expires_in_seconds" in token_info:

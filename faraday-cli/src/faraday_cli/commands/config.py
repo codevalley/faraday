@@ -15,56 +15,62 @@ def config_group() -> None:
 
 
 @config_group.command()
-@click.argument('key')
-@click.argument('value')
+@click.argument("key")
+@click.argument("value")
 @click.pass_context
 def set(ctx: click.Context, key: str, value: str) -> None:
     """Set a configuration value.
-    
+
     Examples:
         faraday config set api.url http://localhost:8001
         faraday config set output.colors true
         faraday config set cache.enabled false
+        faraday config set api.timeout 60
     """
-    config: ConfigManager = ctx.obj['config']
-    output: OutputFormatter = ctx.obj['output']
-    
+    config: ConfigManager = ctx.obj["config"]
+    output: OutputFormatter = ctx.obj["output"]
+
     try:
-        # Try to parse value as JSON for complex types
+        # Try to parse value as JSON for complex types (booleans, numbers, etc.)
         try:
             parsed_value = json.loads(value)
         except json.JSONDecodeError:
             # If not valid JSON, treat as string
             parsed_value = value
-        
+
         config.set(key, parsed_value)
-        output.format_success(f"Set {key} = {parsed_value}")
-        
+        output.format_success(f"Configuration updated: {key} = {parsed_value}")
+
+    except ValueError as e:
+        output.format_error(f"Invalid configuration: {e}", "Configuration Error")
+        ctx.exit(1)
     except Exception as e:
         output.format_error(f"Failed to set configuration: {e}", "Configuration Error")
         ctx.exit(1)
 
 
 @config_group.command()
-@click.argument('key', required=False)
+@click.argument("key", required=False)
 @click.pass_context
 def get(ctx: click.Context, key: Optional[str]) -> None:
     """Get a configuration value or show all configuration.
-    
+
     Examples:
         faraday config get api.url
         faraday config get
     """
-    config: ConfigManager = ctx.obj['config']
-    output: OutputFormatter = ctx.obj['output']
-    
+    config: ConfigManager = ctx.obj["config"]
+    output: OutputFormatter = ctx.obj["output"]
+
     if key:
         # Get specific key
         value = config.get(key)
         if value is None:
-            output.format_error(f"Configuration key '{key}' not found", "Configuration Error")
+            output.format_error(
+                f"Configuration key '{key}' not found", "Configuration Error"
+            )
             ctx.exit(1)
-        
+
         if output.json_mode:
             result = {key: value}
             click.echo(json.dumps(result, indent=2))
@@ -89,24 +95,52 @@ def show(ctx: click.Context) -> None:
 
 
 @config_group.command()
-@click.confirmation_option(prompt='Are you sure you want to reset all configuration to defaults?')
+@click.confirmation_option(
+    prompt="Are you sure you want to reset all configuration to defaults?"
+)
 @click.pass_context
 def reset(ctx: click.Context) -> None:
     """Reset configuration to defaults."""
-    config: ConfigManager = ctx.obj['config']
-    output: OutputFormatter = ctx.obj['output']
-    
+    config: ConfigManager = ctx.obj["config"]
+    output: OutputFormatter = ctx.obj["output"]
+
     try:
         config.reset()
         output.format_success("Configuration reset to defaults")
     except Exception as e:
-        output.format_error(f"Failed to reset configuration: {e}", "Configuration Error")
+        output.format_error(
+            f"Failed to reset configuration: {e}", "Configuration Error"
+        )
         ctx.exit(1)
 
 
-def _print_config_tree(output: OutputFormatter, config_dict: dict, prefix: str = "") -> None:
+@config_group.command()
+@click.pass_context
+def path(ctx: click.Context) -> None:
+    """Show the path to the configuration file."""
+    config: ConfigManager = ctx.obj["config"]
+    output: OutputFormatter = ctx.obj["output"]
+
+    config_path = config.get_config_path()
+
+    if output.json_mode:
+        result = {"config_path": str(config_path)}
+        click.echo(json.dumps(result, indent=2))
+    else:
+        output.console.print(f"Configuration file: [cyan]{config_path}[/cyan]")
+        if config_path.exists():
+            output.console.print("[green]✓[/green] File exists")
+        else:
+            output.console.print(
+                "[yellow]⚠[/yellow] File will be created on first configuration change"
+            )
+
+
+def _print_config_tree(
+    output: OutputFormatter, config_dict: dict, prefix: str = ""
+) -> None:
     """Recursively print configuration as a tree structure.
-    
+
     Args:
         output: Output formatter instance
         config_dict: Configuration dictionary to print
@@ -114,7 +148,7 @@ def _print_config_tree(output: OutputFormatter, config_dict: dict, prefix: str =
     """
     for key, value in config_dict.items():
         full_key = f"{prefix}.{key}" if prefix else key
-        
+
         if isinstance(value, dict):
             output.console.print(f"[bold cyan]{full_key}[/bold cyan]:")
             _print_config_tree(output, value, full_key)
