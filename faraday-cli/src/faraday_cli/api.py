@@ -205,6 +205,72 @@ class APIClient:
                 raise AuthenticationError("Invalid email or password")
             raise ServerError(f"Authentication failed: {e.response.status_code}")
 
+    async def refresh_token(self) -> str:
+        """Refresh the current authentication token.
+
+        Returns:
+            New access token string
+
+        Raises:
+            AuthenticationError: If token refresh fails
+            NetworkError: If network communication fails
+        """
+        current_token = self.auth_manager.load_token()
+        if not current_token:
+            raise AuthenticationError("No token available to refresh")
+
+        try:
+            response = await self.client.post(
+                f"{self.base_url}/auth/refresh",
+                headers={"Authorization": f"Bearer {current_token}"},
+            )
+
+            if response.status_code == 401:
+                # Clear invalid token and raise error
+                self.auth_manager.clear_token()
+                raise AuthenticationError("Token refresh failed. Please login again.")
+
+            response.raise_for_status()
+            token_data = response.json()
+
+            access_token = token_data["access_token"]
+            expires_in = token_data.get("expires_in")
+
+            # Save new token
+            self.auth_manager.save_token(access_token, expires_in)
+
+            return access_token
+
+        except httpx.ConnectError as e:
+            raise NetworkError(f"Could not connect to server: {e}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                self.auth_manager.clear_token()
+                raise AuthenticationError("Token refresh failed. Please login again.")
+            raise ServerError(f"Token refresh failed: {e.response.status_code}")
+
+    async def logout(self) -> bool:
+        """Logout user and clear stored token.
+
+        Returns:
+            True if logout was successful
+        """
+        token = self.auth_manager.load_token()
+        if token:
+            try:
+                # Attempt to invalidate token on server
+                await self.client.post(
+                    f"{self.base_url}/auth/logout",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            except (httpx.HTTPError, httpx.ConnectError):
+                # If server logout fails, still clear local token
+                pass
+
+        # Always clear local token
+        self.auth_manager.clear_token()
+        return True
+
     async def create_thought(
         self, content: str, metadata: Optional[Dict] = None
     ) -> ThoughtData:
