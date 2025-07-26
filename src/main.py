@@ -67,7 +67,7 @@ def main() -> None:
     port = container.config.api.port()
 
     uvicorn.run(
-        "src.main:app",
+        "src.api.app:app",
         host=host,
         port=port,
         reload=True,

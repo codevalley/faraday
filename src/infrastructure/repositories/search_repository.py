@@ -122,16 +122,10 @@ class HybridSearchRepository(SearchRepository):
 
             # Perform vector search
             vector_results = await self._vector_store.search(
-                vector=query_embedding,
-                filters={
-                    "user_id": query.user_id,
-                    **(
-                        {"entity_type": {"$in": [et.value for et in query.entity_filter.entity_types]}}
-                        if query.entity_filter and query.entity_filter.entity_types
-                        else {}
-                    ),
-                },
+                query_vector=query_embedding,
                 top_k=query.pagination.page_size * 2,  # Get more for filtering
+                user_id=query.user_id,
+                entity_type=query.entity_filter.entity_types[0] if query.entity_filter and query.entity_filter.entity_types else None,
             )
 
             # Get thought IDs from vector results

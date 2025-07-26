@@ -55,6 +55,10 @@ class LLMService:
             if max_tokens is not None
             else int(os.getenv("LLM_MAX_TOKENS", model_config.get("max_tokens", 1024)))
         )
+        
+        # Ensure max_tokens doesn't exceed safe limits for the model
+        if self.max_tokens > 4000:  # Leave room for input tokens
+            self.max_tokens = 1024
 
         # Set API key if provided, otherwise LiteLLM will use environment variables
         if api_key:
@@ -106,13 +110,26 @@ class LLMService:
                     response_format["schema"] = json_schema
 
             # Make the API call
-            response = await completion(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                response_format=response_format if json_mode else None,
-            )
+            call_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+            }
+            
+            # Only add response_format for models that support it
+            if json_mode and response_format:
+                # Check if model supports structured output
+                if "gpt-4o" in self.model or "gpt-3.5-turbo" in self.model:
+                    call_params["response_format"] = response_format
+                else:
+                    # For older models, add JSON instruction to the system message
+                    if messages and messages[0]["role"] == "system":
+                        messages[0]["content"] += "\n\nPlease respond with valid JSON only."
+                    else:
+                        messages.insert(0, {"role": "system", "content": "Please respond with valid JSON only."})
+            
+            response = await completion(**call_params)
 
             # Extract the content from the response
             content = response.choices[0].message.content

@@ -30,12 +30,14 @@ class OpenAIEmbeddingService(EmbeddingService, LoggerMixin):
             batch_size: Maximum number of texts to embed in a single API call
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OpenAI API key is required")
-
         self.model = model
         self.batch_size = batch_size
-        self.client = AsyncOpenAI(api_key=self.api_key)
+        
+        if self.api_key and self.api_key != "your-openai-api-key-here":
+            self.client = AsyncOpenAI(api_key=self.api_key)
+        else:
+            self.logger.warning("OpenAI API key not provided, running in mock mode")
+            self.client = None
         
         self.logger.info(
             "OpenAI embedding service initialized",
@@ -73,6 +75,21 @@ class OpenAIEmbeddingService(EmbeddingService, LoggerMixin):
                 }
             )
             
+            if not self.client:
+                # Return a mock embedding for development
+                import hashlib
+                import struct
+                hash_obj = hashlib.md5(text.encode())
+                # Create a deterministic 1536-dimensional vector (OpenAI's embedding size)
+                mock_embedding = []
+                for i in range(1536):
+                    # Use hash to create deterministic values
+                    hash_bytes = hashlib.md5(f"{text}_{i}".encode()).digest()
+                    value = struct.unpack('f', hash_bytes[:4])[0]
+                    # Normalize to [-1, 1] range
+                    mock_embedding.append(max(-1.0, min(1.0, value)))
+                return mock_embedding
+                
             response = await self.client.embeddings.create(
                 model=self.model,
                 input=text,
@@ -168,15 +185,29 @@ class OpenAIEmbeddingService(EmbeddingService, LoggerMixin):
                 batch = valid_texts[i : i + self.batch_size]
                 batch_start = time.time()
                 
-                response = await self.client.embeddings.create(
-                    model=self.model,
-                    input=batch,
-                )
-                
-                # Sort by index to maintain original order
-                sorted_embeddings = sorted(response.data, key=lambda x: x.index)
-                batch_embeddings = [item.embedding for item in sorted_embeddings]
-                results.extend(batch_embeddings)
+                if not self.client:
+                    # Generate mock embeddings for development
+                    import hashlib
+                    import struct
+                    batch_embeddings = []
+                    for text in batch:
+                        mock_embedding = []
+                        for j in range(1536):
+                            hash_bytes = hashlib.md5(f"{text}_{j}".encode()).digest()
+                            value = struct.unpack('f', hash_bytes[:4])[0]
+                            mock_embedding.append(max(-1.0, min(1.0, value)))
+                        batch_embeddings.append(mock_embedding)
+                    results.extend(batch_embeddings)
+                else:
+                    response = await self.client.embeddings.create(
+                        model=self.model,
+                        input=batch,
+                    )
+                    
+                    # Sort by index to maintain original order
+                    sorted_embeddings = sorted(response.data, key=lambda x: x.index)
+                    batch_embeddings = [item.embedding for item in sorted_embeddings]
+                    results.extend(batch_embeddings)
                 
                 batch_duration = time.time() - batch_start
                 self.logger.debug(

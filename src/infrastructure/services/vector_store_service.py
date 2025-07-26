@@ -5,7 +5,7 @@ import time
 from typing import Dict, List, Optional
 from uuid import UUID
 
-import pinecone
+from pinecone import Pinecone
 
 from src.domain.entities.enums import EntityType
 from src.domain.exceptions import VectorStoreError
@@ -39,8 +39,9 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
     def __init__(
         self,
         api_key: str = None,
-        environment: str = None,
-        index_name: str = "semantic-engine",
+        host: str = None,
+        environment: str = None,  # Keep for backward compatibility
+        index_name: str = "faraday",
         namespace: str = "default",
         dimension: int = 1536,  # Default for text-embedding-ada-002
     ):
@@ -48,7 +49,8 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
 
         Args:
             api_key: Pinecone API key (defaults to PINECONE_API_KEY env var)
-            environment: Pinecone environment (defaults to PINECONE_ENVIRONMENT env var)
+            host: Pinecone host URL for serverless (defaults to PINECONE_HOST env var)
+            environment: Pinecone environment (legacy, for backward compatibility)
             index_name: Name of the Pinecone index
             namespace: Default namespace for vectors
             dimension: Dimension of the vectors (1536 for OpenAI ada-002)
@@ -57,22 +59,39 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
         if not self.api_key:
             raise ValueError("Pinecone API key is required")
 
-        self.environment = environment or os.getenv("PINECONE_ENVIRONMENT")
-        if not self.environment:
-            raise ValueError("Pinecone environment is required")
-
+        self.host = host or os.getenv("PINECONE_HOST")
+        self.environment = environment or os.getenv("PINECONE_ENVIRONMENT")  # Keep for backward compatibility
         self.index_name = index_name
         self.namespace = namespace
         self.dimension = dimension
 
-        # Initialize Pinecone
-        pinecone.init(api_key=self.api_key, environment=self.environment)
-
-        # Ensure index exists
-        self._ensure_index_exists()
-
-        # Get the index
-        self.index = pinecone.Index(self.index_name)
+        # Initialize Pinecone only if credentials are provided
+        if self.api_key and self.api_key != "your-pinecone-api-key-here":
+            try:
+                # Modern Pinecone client (v3+) - use index name directly
+                pc = Pinecone(api_key=self.api_key)
+                self.index = pc.Index(self.index_name)
+                
+                self.logger.info(
+                    "Pinecone vector store initialized successfully",
+                    extra={
+                        "index_name": self.index_name,
+                        "host": self.host,
+                        "namespace": self.namespace,
+                        "dimension": self.dimension,
+                    }
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to initialize Pinecone: {e}")
+                self.index = None
+        else:
+            self.logger.warning(
+                "Pinecone credentials not provided, running in mock mode",
+                extra={
+                    "api_key_provided": bool(self.api_key and self.api_key != "your-pinecone-api-key-here"),
+                }
+            )
+            self.index = None
         
         self.logger.info(
             "Pinecone vector store initialized",
@@ -84,19 +103,7 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
             }
         )
 
-    def _ensure_index_exists(self) -> None:
-        """Ensure the Pinecone index exists, creating it if necessary."""
-        try:
-            # List existing indexes
-            existing_indexes = pinecone.list_indexes()
 
-            # Create index if it doesn't exist
-            if self.index_name not in existing_indexes:
-                pinecone.create_index(
-                    name=self.index_name, dimension=self.dimension, metric="cosine"
-                )
-        except Exception as e:
-            raise VectorStoreError(f"Failed to ensure index exists: {str(e)}")
 
     @vector_store_retry
     async def store_vector(
@@ -130,10 +137,13 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
                 }
             )
             
-            self.index.upsert(
-                vectors=[{"id": id, "values": vector, "metadata": metadata}],
-                namespace=self.namespace,
-            )
+            if self.index:
+                self.index.upsert(
+                    vectors=[{"id": id, "values": vector, "metadata": metadata}],
+                    namespace=self.namespace,
+                )
+            else:
+                self.logger.warning("Vector store not initialized, skipping storage")
             
             duration = time.time() - start_time
             self.logger.info(
@@ -225,6 +235,10 @@ class PineconeVectorStore(VectorStoreService, LoggerMixin):
             )
 
             # Execute search
+            if not self.index:
+                self.logger.warning("Vector store not initialized, returning empty results")
+                return []
+                
             response = self.index.query(
                 vector=query_vector,
                 top_k=top_k,

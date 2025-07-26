@@ -8,6 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 import os
 
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
 from src.container import container
 from src.api.routes.thoughts import create_thoughts_router
 from src.api.routes.search import create_search_router
@@ -32,6 +36,42 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: Configured FastAPI application
     """
+    # Load environment configuration
+    env_path = Path(".") / ".env"
+    load_dotenv(dotenv_path=env_path)
+    
+    # Configure container
+    container.config.from_dict(
+        {
+            "db": {
+                "connection_string": os.getenv(
+                    "DATABASE_URL",
+                    "postgresql+asyncpg://nyn@localhost:5432/faraday",
+                ),
+            },
+            "api": {
+                "host": os.getenv("API_HOST", "0.0.0.0"),
+                "port": int(os.getenv("API_PORT", "8000")),
+            },
+            "security": {
+                "secret_key": os.getenv("SECRET_KEY", "insecure-secret-key"),
+                "algorithm": os.getenv("ALGORITHM", "HS256"),
+                "access_token_expire_minutes": int(
+                    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+                ),
+            },
+            "openai": {
+                "api_key": os.getenv("OPENAI_API_KEY", ""),
+                "model": os.getenv("OPENAI_MODEL", "gpt-4"),
+            },
+            "pinecone": {
+                "api_key": os.getenv("PINECONE_API_KEY", ""),
+                "environment": os.getenv("PINECONE_ENVIRONMENT", ""),
+                "index_name": os.getenv("PINECONE_INDEX", "faraday"),
+            },
+        }
+    )
+    
     # Set up logging
     setup_logging(
         level="INFO",
@@ -113,7 +153,7 @@ def create_app() -> FastAPI:
             },
         ],
         openapi_url="/api/v1/openapi.json",
-        docs_url="/api/v1/docs",
+        docs_url=None,  # We'll create a custom docs endpoint
         redoc_url="/api/v1/redoc",
     )
 
@@ -248,8 +288,5 @@ def create_app() -> FastAPI:
     return app
 
 
-# Only create app if running as main module
-if __name__ == "__main__":
-    app = create_app()
-else:
-    app = None
+# Create app instance for uvicorn
+app = create_app()

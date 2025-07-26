@@ -37,14 +37,19 @@ class LLMConfigLoader:
                         "models": {
                             "gpt-4": {
                                 "description": "OpenAI GPT-4 model",
-                                "max_tokens": 8192,
+                                "max_tokens": 2048,
+                                "default_temperature": 0.0,
+                            },
+                            "gpt-4o-mini": {
+                                "description": "OpenAI GPT-4o Mini model",
+                                "max_tokens": 2048,
                                 "default_temperature": 0.0,
                             }
                         }
                     }
                 },
                 "default_provider": "openai",
-                "default_model": "gpt-4",
+                "default_model": "gpt-4o-mini",
             }
 
     def get_default_model(self) -> str:
@@ -53,7 +58,7 @@ class LLMConfigLoader:
         Returns:
             The default model name
         """
-        return os.getenv("LLM_MODEL", self.config.get("default_model", "gpt-4"))
+        return os.getenv("LLM_MODEL", self.config.get("default_model", "gpt-4o-mini"))
 
     def get_model_config(self, model_name: str) -> Dict:
         """Get configuration for a specific model.
@@ -73,6 +78,6 @@ class LLMConfigLoader:
 
         if not provider:
             # Return default config if model not found
-            return {"max_tokens": 4096, "default_temperature": 0.0}
+            return {"max_tokens": 2048, "default_temperature": 0.0}
 
         return self.config["providers"][provider]["models"][model_name]

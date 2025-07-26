@@ -25,7 +25,7 @@ from src.infrastructure.repositories.user_repository import PostgreSQLUserReposi
 from src.infrastructure.services.embedding_service import OpenAIEmbeddingService
 from src.infrastructure.services.vector_store_service import PineconeVectorStore
 from src.infrastructure.services.authentication_service import JWTAuthenticationService
-from src.infrastructure.services.user_management_service import UserManagementService
+from src.infrastructure.services.user_management_service import DefaultUserManagementService
 from src.infrastructure.services.search_service import HybridSearchService
 from src.infrastructure.repositories.search_repository import HybridSearchRepository
 from src.infrastructure.repositories.timeline_repository import PostgreSQLTimelineRepository
@@ -92,7 +92,9 @@ class Container(containers.DeclarativeContainer):
     vector_store_service = providers.Singleton(
         PineconeVectorStore,
         api_key=os.getenv("PINECONE_API_KEY"),
-        environment=os.getenv("PINECONE_ENVIRONMENT"),
+        host=os.getenv("PINECONE_HOST"),
+        environment=os.getenv("PINECONE_ENVIRONMENT"),  # Keep for backward compatibility
+        index_name=os.getenv("PINECONE_INDEX", "faraday"),
     )
 
     # Authentication services
@@ -104,8 +106,9 @@ class Container(containers.DeclarativeContainer):
     )
 
     user_management_service = providers.Singleton(
-        UserManagementService,
+        DefaultUserManagementService,
         user_repository=user_repository,
+        authentication_service=authentication_service,
     )
 
     search_service = providers.Singleton(HybridSearchService)
