@@ -1,6 +1,6 @@
 # Faraday CLI Implementation Plan
 
-- [ ] 1. Set up CLI project structure and core dependencies
+- [x] 1. Set up CLI project structure and core dependencies
   - Create new Python package structure with pyproject.toml
   - Install and configure Click, Rich, httpx, pydantic dependencies
   - Set up basic CLI entry point with Click group
