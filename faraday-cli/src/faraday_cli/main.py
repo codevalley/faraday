@@ -11,6 +11,7 @@ from faraday_cli.output import OutputFormatter
 from faraday_cli.commands.auth import auth_group
 from faraday_cli.commands.config import config_group
 from faraday_cli.commands.thoughts import thoughts_group
+from faraday_cli.commands.search import search_command
 
 
 @click.group()
@@ -60,6 +61,7 @@ def cli(
 cli.add_command(auth_group)
 cli.add_command(config_group)
 cli.add_command(thoughts_group)
+cli.add_command(search_command, name="search")
 
 
 @cli.command()

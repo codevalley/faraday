@@ -46,6 +46,7 @@ class ThoughtData(BaseModel):
     user_id: str
     timestamp: datetime
     metadata: Optional[Dict[str, Any]] = None
+    relevance_score: Optional[float] = None  # For search results
 
 
 class SearchResult(BaseModel):
@@ -55,6 +56,7 @@ class SearchResult(BaseModel):
     total: int
     query: str
     execution_time: float
+    filters_applied: Optional[Dict[str, Any]] = None
 
 
 class UserStats(BaseModel):
@@ -298,14 +300,31 @@ class APIClient:
         Args:
             query: Search query string
             limit: Maximum number of results
-            filters: Optional search filters
+            filters: Optional search filters (mood, tags, since, until, min_score, sort)
 
         Returns:
             Search results
         """
         params = {"q": query, "limit": limit}
+        
         if filters:
-            params.update(filters)
+            # Handle different filter types appropriately
+            for key, value in filters.items():
+                if key == "tags" and isinstance(value, list):
+                    # Convert tag list to comma-separated string for API
+                    params["tags"] = ",".join(value)
+                elif key in ["since", "until"]:
+                    # Date filters - pass as ISO strings
+                    params[key] = value
+                elif key == "min_score":
+                    # Numeric filter
+                    params["min_score"] = value
+                elif key == "sort":
+                    # Sort parameter
+                    params["sort"] = value
+                else:
+                    # Other filters (mood, etc.)
+                    params[key] = value
 
         response = await self._make_request("GET", "/api/v1/search", params=params)
         return SearchResult(**response)

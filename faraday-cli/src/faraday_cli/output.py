@@ -189,9 +189,11 @@ class OutputFormatter:
 
         # Display each result with relevance info and highlighting
         for i, thought in enumerate(results.thoughts, 1):
-            # For now, we'll show a mock relevance score
-            # In a real implementation, this would come from the search API
-            relevance = max(95 - (i * 5), 60)  # Mock decreasing relevance
+            # Use actual relevance score from API, or fall back to position-based score
+            if thought.relevance_score is not None:
+                relevance = int(thought.relevance_score * 100)  # Convert to percentage
+            else:
+                relevance = max(95 - (i * 5), 60)  # Fallback position-based score
 
             content_preview = (
                 thought.content[:150] + "..."
