@@ -557,8 +557,6 @@ while IFS= read -r line; do
         sleep 0.5  # Rate limiting
     fi
 done < notes.txt
-```
-
 ## Python Integration
 
 ```python
@@ -566,9 +564,10 @@ done < notes.txt
 import subprocess
 import json
 import sys
+from datetime import datetime
 
 def faraday_command(cmd_args, json_output=True):
-    """Execute faraday command and return result."""
+    \"\"\"Execute faraday command and return result.\"\"\"
     cmd = ['faraday']
     if json_output:
         cmd.append('--json')
@@ -583,7 +582,7 @@ def faraday_command(cmd_args, json_output=True):
 
 # Usage examples
 def search_and_analyze(query):
-    """Search thoughts and analyze results."""
+    \"\"\"Search thoughts and analyze results.\"\"\"
     results = faraday_command(['search', query])
     
     print(f"Found {len(results['results'])} thoughts")
@@ -591,7 +590,7 @@ def search_and_analyze(query):
         print(f"- {thought['content'][:50]}... (score: {thought['score']:.2f})")
 
 def daily_stats():
-    """Get daily thought statistics."""
+    \"\"\"Get daily thought statistics.\"\"\"
     thoughts = faraday_command(['thoughts', 'list', '--limit', '1000'])
     
     today = datetime.now().date()
@@ -657,8 +656,7 @@ echo "✅ Script completed successfully"
 6. **Log operations** for debugging
 7. **Use structured error handling**
 
-Happy automating! 🚀
-"""
+Happy automating! 🚀"""
     
     output.console.print(Panel(
         Markdown(guide_content),
