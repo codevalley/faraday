@@ -439,3 +439,20 @@ class OutputFormatter:
         # Filter out empty terms and common stop words
         stop_words = {"the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
         return [term.strip().lower() for term in terms if term.strip() and term.lower() not in stop_words]
+    
+    def format_thoughts_list(self, thoughts: List[ThoughtData], title: str = "Recent Thoughts") -> None:
+        """Format and display a list of thoughts (alias for format_thought_list).
+
+        Args:
+            thoughts: List of thoughts to display
+            title: Title for the thought list
+        """
+        self.format_thought_list(thoughts, title)
+    
+    def format_thought_detail(self, thought: ThoughtData) -> None:
+        """Format and display a single thought with full details.
+
+        Args:
+            thought: Thought data to display
+        """
+        self.format_thought(thought, show_full=True)

@@ -455,3 +455,47 @@ class CachedAPIClient:
     def clear_cache(self) -> None:
         """Clear all cached data."""
         self.cache.clear_cache()
+    
+    async def get_thought(self, thought_id: str) -> Optional[ThoughtData]:
+        """Get a thought by ID (alias for get_thought_by_id).
+        
+        Args:
+            thought_id: Unique thought identifier
+            
+        Returns:
+            Thought data or None if not found
+        """
+        try:
+            return await self.get_thought_by_id(thought_id)
+        except APIError:
+            return None
+    
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get basic statistics including cache stats.
+        
+        Returns:
+            Dictionary with statistics
+        """
+        cache_stats = self.get_cache_stats()
+        
+        # Add some basic computed stats
+        cached_thoughts = self.cache.get_cached_thoughts(limit=1000)  # Get all for counting
+        
+        stats = {
+            "total_thoughts": len(cached_thoughts),
+            "cached_thoughts": cache_stats.get("cached_thoughts", 0),
+            "pending_sync": cache_stats.get("pending_operations", 0),
+            "offline_mode": self._offline_mode,
+            "cache_enabled": self.config.get("cache.enabled", True),
+        }
+        
+        # Try to get server stats if online
+        if not self._offline_mode:
+            try:
+                server_stats = await self.get_user_stats()
+                stats["server_thoughts"] = server_stats.total_thoughts
+                stats["server_entities"] = server_stats.total_entities
+            except (NetworkError, APIError):
+                pass  # Ignore errors, just use cache stats
+        
+        return stats

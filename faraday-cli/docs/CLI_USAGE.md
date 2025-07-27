@@ -2,6 +2,68 @@
 
 Complete guide to using the Faraday CLI for managing your personal semantic engine.
 
+## Quick Start
+
+The Faraday CLI provides two modes of operation:
+
+### Smart Interactive Mode (Default)
+When you run `faraday` without any commands in a terminal, it automatically starts interactive mode for a conversational experience:
+
+```bash
+faraday
+# 💡 Starting interactive mode. Use --help to see all commands or --no-interactive to disable.
+# 
+# ╭───────────────────────────────────────────────────────────────────────────────────────────╮
+# │ 🧠 Welcome to Faraday Interactive Mode                                                    │
+# ╰────────────────── Type 'help' for available commands or 'exit' to quit ───────────────────╯
+# 
+# faraday> add: Had a great meeting today
+# ✓ Added thought: abc12345...
+# faraday> search: meetings
+# 🔍 Search results...
+# faraday> exit
+```
+
+### Standard CLI Mode
+Use specific commands for scripting, automation, or one-off operations:
+
+```bash
+faraday thoughts add "Quick thought"
+faraday search "important meetings" --limit 5
+faraday thoughts list | grep "urgent"
+```
+
+## Controlling Interactive Mode
+
+The CLI intelligently detects when to use interactive mode, but you have full control:
+
+### Disable Interactive Mode
+```bash
+# One-time disable
+faraday --no-interactive
+
+# Environment variable
+export FARADAY_NO_INTERACTIVE=1
+faraday
+
+# Configuration setting
+faraday config set ui.auto_interactive false
+```
+
+### Force Interactive Mode
+```bash
+# Always starts interactive mode
+faraday interactive
+```
+
+### Auto-Detection Rules
+Interactive mode starts automatically when:
+- ✅ No specific command given (just `faraday`)
+- ✅ Running in a terminal (not piped/redirected)
+- ✅ Not requesting JSON output (`--json`)
+- ✅ Not in CI environment
+- ✅ Not disabled via flag, environment, or config
+
 ## Table of Contents
 
 - [Getting Started](#getting-started)
