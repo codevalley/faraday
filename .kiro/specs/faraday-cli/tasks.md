@@ -39,7 +39,7 @@
   - Create error message formatting with appropriate styling
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 6. Build semantic search functionality
+- [x] 6. Build semantic search functionality
   - Implement "faraday search" command with natural language queries
   - Add search result formatting with relevance scores
   - Create search filtering by mood, tags, and date ranges
@@ -47,7 +47,7 @@
   - Add pagination and limit controls for search results
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 7. Create local caching and offline support
+- [x] 7. Create local caching and offline support
   - Implement LocalCache class using SQLite for offline storage
   - Add automatic caching of thoughts and search results
   - Create sync mechanism for offline/online mode transitions

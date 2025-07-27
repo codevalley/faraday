@@ -8,10 +8,13 @@ from faraday_cli.config import ConfigManager
 from faraday_cli.api import APIClient
 from faraday_cli.auth import AuthManager
 from faraday_cli.output import OutputFormatter
+from faraday_cli.cache import LocalCache
+from faraday_cli.cached_api import CachedAPIClient
 from faraday_cli.commands.auth import auth_group
 from faraday_cli.commands.config import config_group
 from faraday_cli.commands.thoughts import thoughts_group
 from faraday_cli.commands.search import search_command
+from faraday_cli.commands.sync import sync_group
 
 
 @click.group()
@@ -46,11 +49,17 @@ def cli(
     )
     api_client = APIClient(effective_api_url, auth_manager)
 
+    # Initialize cache (always enabled for offline support)
+    cache = LocalCache(config_manager.config_dir / "cache")
+    cached_api = CachedAPIClient(api_client, cache, config_manager)
+
     output_formatter = OutputFormatter(console, json_output)
 
     # Store in context for subcommands
     ctx.obj["config"] = config_manager
     ctx.obj["api_client"] = api_client
+    ctx.obj["cached_api"] = cached_api
+    ctx.obj["cache"] = cache
     ctx.obj["auth_manager"] = auth_manager
     ctx.obj["output"] = output_formatter
     ctx.obj["console"] = console
@@ -62,6 +71,7 @@ cli.add_command(auth_group)
 cli.add_command(config_group)
 cli.add_command(thoughts_group)
 cli.add_command(search_command, name="search")
+cli.add_command(sync_group, name="sync")
 
 
 @cli.command()

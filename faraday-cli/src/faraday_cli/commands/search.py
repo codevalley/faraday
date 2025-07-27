@@ -6,6 +6,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from faraday_cli.api import APIClient, APIError, AuthenticationError, NetworkError
+from faraday_cli.cached_api import CachedAPIClient
 from faraday_cli.auth import AuthManager
 from faraday_cli.output import OutputFormatter
 
@@ -94,12 +95,17 @@ def search(
         faraday search "collaboration ideas" --since 7d --until today
         faraday search "machine learning" --min-score 0.8 --sort date
     """
+    # Use cached API client if available, otherwise fall back to regular API client
+    cached_api: Optional[CachedAPIClient] = ctx.obj.get("cached_api")
     api_client: APIClient = ctx.obj["api_client"]
     auth_manager: AuthManager = ctx.obj["auth_manager"]
     output: OutputFormatter = ctx.obj["output"]
 
-    # Check authentication
-    if not auth_manager.is_authenticated():
+    # Check authentication (skip for offline mode)
+    if cached_api and cached_api.is_offline:
+        # In offline mode, we can search cached thoughts without authentication
+        pass
+    elif not auth_manager.is_authenticated():
         output.format_error(
             "You must be logged in to search thoughts. Run 'faraday auth login'",
             "Authentication Error",
@@ -169,21 +175,43 @@ def search(
 
     async def do_search():
         try:
+            # Use cached API client if available
+            client = cached_api if cached_api else api_client
+            
             # Show progress for search operation
-            with output.create_progress("Searching thoughts...") as progress:
+            search_text = "Searching thoughts..."
+            if cached_api and cached_api.is_offline:
+                search_text = "Searching cached thoughts..."
+            
+            with output.create_progress(search_text) as progress:
                 task = progress.add_task("Searching...", total=None)
                 
-                async with api_client:
-                    results = await api_client.search_thoughts(
+                if cached_api:
+                    # Cached API client doesn't need context manager
+                    results = await client.search_thoughts(
                         query=query,
                         limit=limit,
                         filters=filters if filters else None
                     )
+                else:
+                    # Regular API client needs context manager
+                    async with api_client:
+                        results = await api_client.search_thoughts(
+                            query=query,
+                            limit=limit,
+                            filters=filters if filters else None
+                        )
                 
                 progress.remove_task(task)
             
             # Display results
             output.format_search_results(results)
+            
+            # Show cache/offline indicators
+            if cached_api and cached_api.is_offline:
+                output.console.print("📴 Showing cached results (offline mode)", style="yellow")
+            elif cached_api and results.execution_time == 0.0:
+                output.console.print("⚡ Results from cache", style="dim")
             
             # Show additional info if verbose mode
             if ctx.obj.get("verbose", False) and not output.json_mode:
@@ -199,8 +227,17 @@ def search(
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
         except NetworkError as e:
-            output.format_error(str(e), "Network Error")
-            ctx.exit(1)
+            if cached_api:
+                output.format_error(f"{e} - Searching cached thoughts", "Network Error")
+                try:
+                    results = await cached_api.search_thoughts(query, limit, filters)
+                    output.format_search_results(results)
+                    output.console.print("📴 Showing cached results", style="yellow")
+                except Exception:
+                    ctx.exit(1)
+            else:
+                output.format_error(str(e), "Network Error")
+                ctx.exit(1)
         except APIError as e:
             output.format_error(str(e), "API Error")
             ctx.exit(1)

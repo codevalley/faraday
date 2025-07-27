@@ -5,6 +5,7 @@ import asyncio
 from typing import Optional, List
 
 from faraday_cli.api import APIClient, APIError, AuthenticationError, NetworkError
+from faraday_cli.cached_api import CachedAPIClient
 from faraday_cli.auth import AuthManager
 from faraday_cli.output import OutputFormatter
 
@@ -38,12 +39,17 @@ def add(
         faraday thoughts add "Working on AI project" --mood excited --tags work,ai
         faraday thoughts add "Coffee break" --meta location=office --meta duration=15min
     """
+    # Use cached API client if available, otherwise fall back to regular API client
+    cached_api: Optional[CachedAPIClient] = ctx.obj.get("cached_api")
     api_client: APIClient = ctx.obj["api_client"]
     auth_manager: AuthManager = ctx.obj["auth_manager"]
     output: OutputFormatter = ctx.obj["output"]
 
-    # Check authentication
-    if not auth_manager.is_authenticated():
+    # Check authentication (skip for offline mode)
+    if cached_api and cached_api.is_offline:
+        # In offline mode, we can create thoughts without authentication
+        pass
+    elif not auth_manager.is_authenticated():
         output.format_error(
             "You must be logged in to add thoughts. Run 'faraday auth login'",
             "Authentication Error",
@@ -73,22 +79,40 @@ def add(
 
     async def do_add():
         try:
-            async with api_client:
-                thought = await api_client.create_thought(
+            # Use cached API client if available
+            client = cached_api if cached_api else api_client
+            
+            if cached_api:
+                # Cached API client doesn't need context manager
+                thought = await client.create_thought(
                     content, metadata if metadata else None
                 )
-                output.format_success(f"Thought created with ID: {thought.id}")
+            else:
+                # Regular API client needs context manager
+                async with api_client:
+                    thought = await api_client.create_thought(
+                        content, metadata if metadata else None
+                    )
+            
+            output.format_success(f"Thought created with ID: {thought.id}")
+            
+            # Show offline indicator if in offline mode
+            if cached_api and cached_api.is_offline:
+                output.console.print("📴 Created offline - will sync when online", style="yellow")
 
-                if not output.json_mode:
-                    output.console.print()
-                    output.format_thought(thought)
+            if not output.json_mode:
+                output.console.print()
+                output.format_thought(thought)
 
         except AuthenticationError as e:
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
         except NetworkError as e:
-            output.format_error(str(e), "Network Error")
-            ctx.exit(1)
+            if cached_api:
+                output.format_error(f"{e} - Switched to offline mode", "Network Error")
+            else:
+                output.format_error(str(e), "Network Error")
+                ctx.exit(1)
         except APIError as e:
             output.format_error(str(e), "API Error")
             ctx.exit(1)
@@ -115,12 +139,17 @@ def list(
         faraday thoughts list --mood happy
         faraday thoughts list --tags work,meeting
     """
+    # Use cached API client if available, otherwise fall back to regular API client
+    cached_api: Optional[CachedAPIClient] = ctx.obj.get("cached_api")
     api_client: APIClient = ctx.obj["api_client"]
     auth_manager: AuthManager = ctx.obj["auth_manager"]
     output: OutputFormatter = ctx.obj["output"]
 
-    # Check authentication
-    if not auth_manager.is_authenticated():
+    # Check authentication (skip for offline mode)
+    if cached_api and cached_api.is_offline:
+        # In offline mode, we can list cached thoughts without authentication
+        pass
+    elif not auth_manager.is_authenticated():
         output.format_error(
             "You must be logged in to list thoughts. Run 'faraday auth login'",
             "Authentication Error",
@@ -136,18 +165,42 @@ def list(
 
     async def do_list():
         try:
-            async with api_client:
-                thoughts = await api_client.get_thoughts(
+            # Use cached API client if available
+            client = cached_api if cached_api else api_client
+            
+            if cached_api:
+                # Cached API client doesn't need context manager
+                thoughts = await client.get_thoughts(
                     limit=limit, filters=filters if filters else None
                 )
-                output.format_thought_list(thoughts, "Recent Thoughts")
+            else:
+                # Regular API client needs context manager
+                async with api_client:
+                    thoughts = await api_client.get_thoughts(
+                        limit=limit, filters=filters if filters else None
+                    )
+            
+            title = "Recent Thoughts"
+            if cached_api and cached_api.is_offline:
+                title += " (Cached)"
+            
+            output.format_thought_list(thoughts, title)
 
         except AuthenticationError as e:
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
         except NetworkError as e:
-            output.format_error(str(e), "Network Error")
-            ctx.exit(1)
+            if cached_api:
+                output.format_error(f"{e} - Showing cached thoughts", "Network Error")
+                # Try to show cached thoughts
+                try:
+                    thoughts = await cached_api.get_thoughts(limit=limit)
+                    output.format_thought_list(thoughts, "Recent Thoughts (Cached)")
+                except Exception:
+                    ctx.exit(1)
+            else:
+                output.format_error(str(e), "Network Error")
+                ctx.exit(1)
         except APIError as e:
             output.format_error(str(e), "API Error")
             ctx.exit(1)
@@ -167,12 +220,17 @@ def show(ctx: click.Context, thought_id: str) -> None:
     Examples:
         faraday thoughts show abc12345
     """
+    # Use cached API client if available, otherwise fall back to regular API client
+    cached_api: Optional[CachedAPIClient] = ctx.obj.get("cached_api")
     api_client: APIClient = ctx.obj["api_client"]
     auth_manager: AuthManager = ctx.obj["auth_manager"]
     output: OutputFormatter = ctx.obj["output"]
 
-    # Check authentication
-    if not auth_manager.is_authenticated():
+    # Check authentication (skip for offline mode)
+    if cached_api and cached_api.is_offline:
+        # In offline mode, we can show cached thoughts without authentication
+        pass
+    elif not auth_manager.is_authenticated():
         output.format_error(
             "You must be logged in to view thoughts. Run 'faraday auth login'",
             "Authentication Error",
@@ -181,16 +239,38 @@ def show(ctx: click.Context, thought_id: str) -> None:
 
     async def do_show():
         try:
-            async with api_client:
-                thought = await api_client.get_thought_by_id(thought_id)
-                output.format_thought(thought, show_full=True)
+            # Use cached API client if available
+            client = cached_api if cached_api else api_client
+            
+            if cached_api:
+                # Cached API client doesn't need context manager
+                thought = await client.get_thought_by_id(thought_id)
+            else:
+                # Regular API client needs context manager
+                async with api_client:
+                    thought = await api_client.get_thought_by_id(thought_id)
+            
+            output.format_thought(thought, show_full=True)
+            
+            # Show cache indicator if from cache
+            if cached_api and cached_api.is_offline:
+                output.console.print("📴 Showing cached version", style="yellow")
 
         except AuthenticationError as e:
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
         except NetworkError as e:
-            output.format_error(str(e), "Network Error")
-            ctx.exit(1)
+            if cached_api:
+                output.format_error(f"{e} - Trying cached version", "Network Error")
+                try:
+                    thought = await cached_api.get_thought_by_id(thought_id)
+                    output.format_thought(thought, show_full=True)
+                    output.console.print("📴 Showing cached version", style="yellow")
+                except Exception:
+                    ctx.exit(1)
+            else:
+                output.format_error(str(e), "Network Error")
+                ctx.exit(1)
         except APIError as e:
             output.format_error(str(e), "API Error")
             ctx.exit(1)
@@ -211,12 +291,17 @@ def delete(ctx: click.Context, thought_id: str) -> None:
     Examples:
         faraday thoughts delete abc12345
     """
+    # Use cached API client if available, otherwise fall back to regular API client
+    cached_api: Optional[CachedAPIClient] = ctx.obj.get("cached_api")
     api_client: APIClient = ctx.obj["api_client"]
     auth_manager: AuthManager = ctx.obj["auth_manager"]
     output: OutputFormatter = ctx.obj["output"]
 
-    # Check authentication
-    if not auth_manager.is_authenticated():
+    # Check authentication (skip for offline mode)
+    if cached_api and cached_api.is_offline:
+        # In offline mode, we can delete thoughts without authentication
+        pass
+    elif not auth_manager.is_authenticated():
         output.format_error(
             "You must be logged in to delete thoughts. Run 'faraday auth login'",
             "Authentication Error",
@@ -225,17 +310,33 @@ def delete(ctx: click.Context, thought_id: str) -> None:
 
     async def do_delete():
         try:
-            async with api_client:
-                success = await api_client.delete_thought(thought_id)
-                if success:
-                    output.format_success(f"Thought {thought_id} deleted successfully")
+            # Use cached API client if available
+            client = cached_api if cached_api else api_client
+            
+            if cached_api:
+                # Cached API client doesn't need context manager
+                success = await client.delete_thought(thought_id)
+            else:
+                # Regular API client needs context manager
+                async with api_client:
+                    success = await api_client.delete_thought(thought_id)
+            
+            if success:
+                output.format_success(f"Thought {thought_id} deleted successfully")
+                
+                # Show offline indicator if in offline mode
+                if cached_api and cached_api.is_offline:
+                    output.console.print("📴 Deleted offline - will sync when online", style="yellow")
 
         except AuthenticationError as e:
             output.format_error(str(e), "Authentication Error")
             ctx.exit(1)
         except NetworkError as e:
-            output.format_error(str(e), "Network Error")
-            ctx.exit(1)
+            if cached_api:
+                output.format_error(f"{e} - Switched to offline mode", "Network Error")
+            else:
+                output.format_error(str(e), "Network Error")
+                ctx.exit(1)
         except APIError as e:
             output.format_error(str(e), "API Error")
             ctx.exit(1)
