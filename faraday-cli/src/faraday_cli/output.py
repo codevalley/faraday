@@ -1,6 +1,7 @@
 """Output formatting using Rich library for beautiful terminal display."""
 
 import json
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from rich.console import Console
@@ -9,8 +10,46 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.columns import Columns
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.highlighter import RegexHighlighter
+from rich.theme import Theme
 
 from faraday_cli.api import ThoughtData, SearchResult, UserStats
+
+
+class SearchHighlighter(RegexHighlighter):
+    """Custom highlighter for search terms in results."""
+    
+    base_style = "search."
+    highlights = []
+    
+    def __init__(self, search_terms: List[str]):
+        """Initialize with search terms to highlight.
+        
+        Args:
+            search_terms: List of terms to highlight in search results
+        """
+        super().__init__()
+        # Create regex patterns for each search term (case insensitive)
+        self.highlights = [
+            rf"(?i)\b{re.escape(term)}\b" for term in search_terms if term.strip()
+        ]
+
+
+# Define a theme for consistent styling
+FARADAY_THEME = Theme({
+    "search.highlight": "bold yellow on blue",
+    "thought.content": "white",
+    "thought.metadata": "dim cyan",
+    "thought.timestamp": "dim green",
+    "thought.id": "dim blue",
+    "error.network": "red",
+    "error.auth": "yellow",
+    "error.validation": "orange3",
+    "error.general": "red",
+    "success": "green",
+    "warning": "yellow",
+    "info": "blue",
+})
 
 
 class OutputFormatter:
@@ -25,6 +64,11 @@ class OutputFormatter:
         """
         self.console = console
         self.json_mode = json_mode
+        self.supports_color = console.color_system is not None
+        
+        # Apply theme if colors are supported
+        if self.supports_color:
+            self.console._theme = FARADAY_THEME
 
     def format_thought(self, thought: ThoughtData, show_full: bool = True) -> None:
         """Format and display a single thought.
@@ -34,7 +78,7 @@ class OutputFormatter:
             show_full: If True, show full details; if False, show summary
         """
         if self.json_mode:
-            self.console.print(thought.json(indent=2))
+            self.console.print(thought.model_dump_json(indent=2))
             return
 
         # Create thought panel
@@ -92,7 +136,7 @@ class OutputFormatter:
             title: Title for the thought list
         """
         if self.json_mode:
-            thoughts_data = [json.loads(thought.json()) for thought in thoughts]
+            thoughts_data = [thought.model_dump() for thought in thoughts]
             self.console.print(json.dumps(thoughts_data, indent=2, default=str))
             return
 
@@ -109,63 +153,106 @@ class OutputFormatter:
             self.console.print()  # Add spacing between thoughts
 
     def format_search_results(self, results: SearchResult) -> None:
-        """Format and display search results.
+        """Format and display search results with term highlighting.
 
         Args:
             results: Search results to display
         """
         if self.json_mode:
-            self.console.print(results.json(indent=2))
+            self.console.print(results.model_dump_json(indent=2))
             return
 
         # Search header
-        self.console.print(
-            f"\n🔍 Search: [bold]'{results.query}'[/bold] "
-            f"({results.total} results in {results.execution_time:.2f}s)\n"
-        )
+        search_icon = "🔍" if self.supports_color else "Search:"
+        
+        if self.supports_color:
+            self.console.print(
+                f"\n{search_icon} Search: [bold blue]'{results.query}'[/bold blue] "
+                f"({results.total} results in {results.execution_time:.2f}s)\n"
+            )
+        else:
+            self.console.print(
+                f"\n{search_icon} '{results.query}' "
+                f"({results.total} results in {results.execution_time:.2f}s)\n"
+            )
 
         if not results.thoughts:
-            self.console.print("[dim]No matching thoughts found.[/dim]")
+            if self.supports_color:
+                self.console.print("[dim]No matching thoughts found.[/dim]")
+            else:
+                self.console.print("No matching thoughts found.")
             return
 
-        # Display each result with relevance info
+        # Create highlighter for search terms
+        search_terms = self._extract_search_terms(results.query)
+        highlighter = SearchHighlighter(search_terms) if self.supports_color else None
+
+        # Display each result with relevance info and highlighting
         for i, thought in enumerate(results.thoughts, 1):
             # For now, we'll show a mock relevance score
             # In a real implementation, this would come from the search API
             relevance = max(95 - (i * 5), 60)  # Mock decreasing relevance
 
             content_preview = (
-                thought.content[:100] + "..."
-                if len(thought.content) > 100
+                thought.content[:150] + "..."
+                if len(thought.content) > 150
                 else thought.content
             )
+            
+            # Apply highlighting to content if colors are supported
+            if highlighter and self.supports_color:
+                highlighted_content = Text(content_preview)
+                for pattern in highlighter.highlights:
+                    for match in re.finditer(pattern, content_preview):
+                        start, end = match.span()
+                        highlighted_content.stylize("search.highlight", start, end)
+                content_display = highlighted_content
+            else:
+                content_display = content_preview
+
             timestamp_str = thought.timestamp.strftime("%Y-%m-%d")
+            timestamp_style = "thought.timestamp" if self.supports_color else "dim"
 
-            # Create result panel with relevance indicator
-            panel_title = f"{relevance}% Match • Thought #{thought.id[:8]}"
-            panel_content = f"{content_preview}\n[dim]{timestamp_str}[/dim]"
+            # Build panel content
+            panel_content = Text()
+            panel_content.append(content_display)
+            panel_content.append(f"\n[{timestamp_style}]{timestamp_str}[/{timestamp_style}]")
 
+            # Add metadata if present
             if thought.metadata:
                 metadata_parts = []
                 if "tags" in thought.metadata and thought.metadata["tags"]:
                     tags = ", ".join(thought.metadata["tags"])
-                    metadata_parts.append(f"🏷️ {tags}")
+                    tag_icon = "🏷️" if self.supports_color else "Tags:"
+                    metadata_parts.append(f"{tag_icon} {tags}")
                 if "mood" in thought.metadata:
                     mood_emoji = self._get_mood_emoji(thought.metadata["mood"])
-                    metadata_parts.append(f"{mood_emoji} {thought.metadata['mood']}")
+                    mood_display = f"{mood_emoji} {thought.metadata['mood']}" if self.supports_color else f"Mood: {thought.metadata['mood']}"
+                    metadata_parts.append(mood_display)
 
                 if metadata_parts:
-                    panel_content += f" • {' • '.join(metadata_parts)}"
+                    metadata_style = "thought.metadata" if self.supports_color else "dim"
+                    panel_content.append(f" • [{metadata_style}]{' • '.join(metadata_parts)}[/{metadata_style}]")
 
+            # Determine border style based on relevance
+            if self.supports_color:
+                border_style = (
+                    "green" if relevance >= 80
+                    else "yellow" if relevance >= 60
+                    else "red"
+                )
+            else:
+                border_style = "white"
+
+            # Create panel with relevance indicator
+            relevance_icon = "📊" if self.supports_color else "Match:"
+            panel_title = f"{relevance_icon} {relevance}% • Thought #{thought.id[:8]}"
+            
             panel = Panel(
                 panel_content,
                 title=panel_title,
                 title_align="left",
-                border_style="green"
-                if relevance >= 80
-                else "yellow"
-                if relevance >= 60
-                else "red",
+                border_style=border_style,
             )
 
             self.console.print(panel)
@@ -178,7 +265,7 @@ class OutputFormatter:
             stats: User statistics to display
         """
         if self.json_mode:
-            self.console.print(stats.json(indent=2))
+            self.console.print(stats.model_dump_json(indent=2))
             return
 
         # Create stats table
@@ -335,3 +422,18 @@ class OutputFormatter:
         }
 
         return mood_emojis.get(mood.lower(), "💭")
+
+    def _extract_search_terms(self, query: str) -> List[str]:
+        """Extract individual search terms from a query string.
+
+        Args:
+            query: Search query string
+
+        Returns:
+            List of individual search terms
+        """
+        # Simple word splitting - could be enhanced with more sophisticated parsing
+        terms = query.split()
+        # Filter out empty terms and common stop words
+        stop_words = {"the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
+        return [term.strip().lower() for term in terms if term.strip() and term.lower() not in stop_words]

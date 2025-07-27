@@ -23,7 +23,7 @@
   - Implement proper error handling for network and API errors
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4. Create basic thought management commands
+- [x] 4. Create basic thought management commands
   - Implement "faraday add" command with content and metadata options
   - Create "faraday list" command with filtering and pagination
   - Add "faraday show" command for detailed thought display
@@ -31,7 +31,7 @@
   - Add input validation and error handling for all commands
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 5. Implement rich output formatting system
+- [x] 5. Implement rich output formatting system
   - Create OutputFormatter class using Rich library
   - Design beautiful thought display format with colors and borders
   - Implement table formatting for thought lists
