@@ -318,24 +318,25 @@ poetry run mypy src/
 
 ```
 faraday-cli/
-├── src/faraday_cli/
-│   ├── __init__.py
-│   ├── main.py              # CLI entry point
-│   ├── config.py            # Configuration management
-│   ├── api.py               # API client
-│   ├── auth.py              # Authentication
-│   ├── output.py            # Output formatting
-│   └── commands/
-│       ├── __init__.py
-│       ├── auth.py          # Auth commands
-│       ├── config.py        # Config commands
-│       └── thoughts.py      # Thought commands
-├── tests/
-│   ├── test_config.py
-│   ├── test_main.py
-│   └── ...
-├── pyproject.toml
-└── README.md
+├── src/faraday_cli/           # Main CLI package
+│   ├── commands/              # Command implementations
+│   ├── main.py               # CLI entry point
+│   ├── api.py                # API client
+│   ├── auth.py               # Authentication
+│   ├── config.py             # Configuration management
+│   ├── cache.py              # Local caching
+│   ├── cached_api.py         # Cached API client
+│   ├── interactive.py        # Interactive mode
+│   └── output.py             # Output formatting
+├── tests/                    # Unit tests
+│   └── integration/          # Integration tests
+├── docs/                     # User documentation
+│   └── development/          # Development documentation
+├── examples/                 # Example scripts and demos
+├── completions/              # Shell completion scripts
+├── scripts/                  # Installation and utility scripts
+├── pyproject.toml            # Project configuration
+└── README.md                 # This file
 ```
 
 ### Running Tests
