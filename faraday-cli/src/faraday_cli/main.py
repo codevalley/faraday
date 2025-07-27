@@ -15,15 +15,36 @@ from faraday_cli.commands.config import config_group
 from faraday_cli.commands.thoughts import thoughts_group
 from faraday_cli.commands.search import search_command
 from faraday_cli.commands.sync import sync_group
+from faraday_cli.commands.help import help_group
 from faraday_cli.interactive import interactive
 
 
 @click.group(invoke_without_command=True)
-@click.option("--config", help="Config file path")
-@click.option("--api-url", help="API server URL")
-@click.option("--json", "json_output", is_flag=True, help="Output JSON")
-@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-@click.option("--no-interactive", is_flag=True, help="Disable auto-interactive mode")
+@click.option(
+    "--config", 
+    help="Path to custom configuration file (default: platform-specific location)",
+    metavar="PATH"
+)
+@click.option(
+    "--api-url", 
+    help="Override API server URL from configuration",
+    metavar="URL"
+)
+@click.option(
+    "--json", "json_output", 
+    is_flag=True, 
+    help="Output results in JSON format for scripting"
+)
+@click.option(
+    "--verbose", "-v", 
+    is_flag=True, 
+    help="Enable verbose output for debugging"
+)
+@click.option(
+    "--no-interactive", 
+    is_flag=True, 
+    help="Disable automatic interactive mode when no command is given"
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -35,8 +56,39 @@ def cli(
 ) -> None:
     """Faraday Personal Semantic Engine CLI
 
-    A command-line interface for managing thoughts, performing semantic searches,
-    and analyzing your personal knowledge base.
+    A powerful command-line interface for managing your thoughts, performing 
+    semantic searches, and analyzing your personal knowledge base.
+
+    \b
+    QUICK START:
+      faraday                          # Start interactive mode
+      faraday auth login               # Login to your server
+      faraday thoughts add "content"   # Add a new thought
+      faraday search "query"           # Search your thoughts
+      faraday thoughts list            # List recent thoughts
+
+    \b
+    MODES:
+      Interactive Mode: Run 'faraday' without commands for a conversational
+                       experience with command completion and help.
+      
+      CLI Mode:        Use specific commands for scripting and automation.
+
+    \b
+    EXAMPLES:
+      # First-time setup
+      faraday config set api.url http://localhost:8001
+      faraday auth login
+      
+      # Daily usage
+      faraday thoughts add "Had a great meeting today"
+      faraday search "coffee meetings" --limit 10
+      faraday thoughts list --mood excited
+      
+      # Scripting with JSON output
+      faraday --json search "AI projects" | jq '.results[].content'
+
+    Use 'faraday COMMAND --help' for detailed help on any command.
     """
     # Ensure context object exists
     ctx.ensure_object(dict)
@@ -106,20 +158,63 @@ cli.add_command(config_group)
 cli.add_command(thoughts_group)
 cli.add_command(search_command, name="search")
 cli.add_command(sync_group, name="sync")
+cli.add_command(help_group)
 cli.add_command(interactive)
 
 
 @cli.command()
+@click.option("--detailed", is_flag=True, help="Show detailed version and system information")
 @click.pass_context
-def version(ctx: click.Context) -> None:
-    """Show version information."""
+def version(ctx: click.Context, detailed: bool) -> None:
+    """Show version information.
+    
+    \b
+    EXAMPLES:
+      faraday version              # Show version number
+      faraday version --detailed   # Show detailed system info
+      faraday --json version       # JSON format for scripts
+    """
     from faraday_cli import __version__
+    import sys
+    import platform
 
     output = ctx.obj["output"]
+    
     if output.json_mode:
-        click.echo(f'{{"version": "{__version__}"}}')
+        version_info = {"version": __version__}
+        if detailed:
+            version_info.update({
+                "python_version": sys.version,
+                "platform": platform.platform(),
+                "architecture": platform.architecture()[0],
+                "system": platform.system(),
+            })
+        click.echo(click.get_text_stream("stdout").write(str(version_info)))
     else:
-        output.console.print(f"Faraday CLI version {__version__}")
+        output.console.print(f"[bold blue]Faraday CLI[/bold blue] version [green]{__version__}[/green]")
+        
+        if detailed:
+            output.console.print()
+            output.console.print("[bold]System Information:[/bold]")
+            output.console.print(f"  Python: {sys.version.split()[0]}")
+            output.console.print(f"  Platform: {platform.platform()}")
+            output.console.print(f"  Architecture: {platform.architecture()[0]}")
+            output.console.print(f"  System: {platform.system()}")
+            
+            # Show configuration location
+            config_path = ctx.obj["config"].get_config_path()
+            output.console.print(f"  Config: {config_path}")
+            
+            # Show API connection status
+            try:
+                auth_manager = ctx.obj["auth_manager"]
+                if auth_manager.is_authenticated():
+                    api_url = ctx.obj["config"].get("api.url", "http://localhost:8001")
+                    output.console.print(f"  API: {api_url} [green](authenticated)[/green]")
+                else:
+                    output.console.print(f"  API: [yellow](not authenticated)[/yellow]")
+            except Exception:
+                output.console.print(f"  API: [red](connection error)[/red]")
 
 
 if __name__ == "__main__":

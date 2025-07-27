@@ -55,7 +55,7 @@
   - Add "faraday sync" command for manual synchronization
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 8. Build interactive mode and REPL
+- [x] 8. Build interactive mode and REPL
   - Create interactive shell using Click's prompt utilities
   - Implement command parsing and execution in interactive mode
   - Add help system and command completion
@@ -103,7 +103,7 @@
   - Implement test fixtures and utilities for consistent testing
   - _Requirements: Testing coverage for all functional requirements_
 
-- [ ] 14. Add CLI documentation and help system
+- [x] 14. Add CLI documentation and help system
   - Create comprehensive help text for all commands and options
   - Implement context-sensitive help in interactive mode
   - Add usage examples and common workflow documentation

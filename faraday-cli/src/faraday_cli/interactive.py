@@ -49,6 +49,8 @@ class InteractiveSession:
             "stats": self._handle_stats,
             "config": self._handle_config,
             "help": self._handle_help,
+            "tutorial": self._handle_tutorial,
+            "tips": self._handle_tips,
             "history": self._handle_history,
             "clear": self._handle_clear,
             "exit": self._handle_exit,
@@ -369,9 +371,19 @@ class InteractiveSession:
             self.console.print("Use the main CLI: faraday config set <key> <value>")
     
     async def _handle_help(self, args: List[str]) -> None:
-        """Handle help command."""
+        """Handle help command with context-sensitive help."""
+        if args and len(args) > 0:
+            # Show help for specific command
+            command = args[0].lower()
+            await self._show_command_help(command)
+        else:
+            # Show general help
+            await self._show_general_help()
+    
+    async def _show_general_help(self) -> None:
+        """Show general help for interactive mode."""
         help_table = Table(title="Available Commands")
-        help_table.add_column("Command", style="cyan")
+        help_table.add_column("Command", style="cyan", no_wrap=True)
         help_table.add_column("Description", style="white")
         help_table.add_column("Example", style="dim")
         
@@ -384,9 +396,11 @@ class InteractiveSession:
             ("sync", "Sync with server", "sync"),
             ("stats", "Show statistics", "stats"),
             ("config", "Show configuration", "config"),
-            ("history", "Show command history", "history"),
+            ("history [limit]", "Show command history", "history 10"),
             ("clear", "Clear screen", "clear"),
-            ("help", "Show this help", "help"),
+            ("help [command]", "Show help (or help for specific command)", "help add"),
+            ("tutorial", "Start interactive tutorial", "tutorial"),
+            ("tips", "Show usage tips", "tips"),
             ("exit/quit", "Exit interactive mode", "exit"),
         ]
         
@@ -394,10 +408,166 @@ class InteractiveSession:
             help_table.add_row(cmd, desc, example)
         
         self.console.print(help_table)
-        self.console.print("\n[dim]Tips:[/dim]")
+        
+        # Show contextual tips based on authentication status
+        self.console.print("\n[bold]Context-Sensitive Tips:[/bold]")
+        
+        if not self.auth_manager.is_authenticated():
+            self.console.print("🔐 [yellow]You're not logged in.[/yellow] Use the main CLI to login:")
+            self.console.print("   [cyan]faraday auth login[/cyan]")
+        else:
+            self.console.print("✅ [green]You're logged in and ready to go![/green]")
+        
+        # Show cache status
+        if hasattr(self.cached_api, 'is_offline') and self.cached_api.is_offline:
+            self.console.print("📴 [yellow]Currently in offline mode.[/yellow] Use 'sync' to reconnect.")
+        
+        self.console.print("\n[dim]General Tips:[/dim]")
         self.console.print("• Use colon syntax: 'add: your thought here'")
         self.console.print("• Press Ctrl+C to cancel current input")
         self.console.print("• Commands are case-insensitive")
+        self.console.print("• Type 'help <command>' for detailed help on any command")
+        self.console.print("• Type 'tutorial' for a guided walkthrough")
+    
+    async def _show_command_help(self, command: str) -> None:
+        """Show detailed help for a specific command."""
+        command_help = {
+            "add": {
+                "description": "Add a new thought to your knowledge base",
+                "syntax": [
+                    "add <content>",
+                    "add: <content>  (natural syntax)"
+                ],
+                "examples": [
+                    "add: Had a great meeting with the design team",
+                    "add Meeting notes from today's standup",
+                    "add: Book recommendation - 'Atomic Habits'"
+                ],
+                "tips": [
+                    "Use colon syntax for natural feel",
+                    "Thoughts are automatically timestamped",
+                    "Works offline - will sync when online"
+                ]
+            },
+            "search": {
+                "description": "Search your thoughts using semantic similarity",
+                "syntax": [
+                    "search <query>",
+                    "search: <query>  (natural syntax)"
+                ],
+                "examples": [
+                    "search: coffee meetings",
+                    "search machine learning projects",
+                    "search: ideas from last week"
+                ],
+                "tips": [
+                    "Uses AI to find semantically similar content",
+                    "Don't worry about exact keywords",
+                    "Works with cached thoughts when offline"
+                ]
+            },
+            "list": {
+                "description": "List your recent thoughts",
+                "syntax": [
+                    "list [limit]"
+                ],
+                "examples": [
+                    "list",
+                    "list 10",
+                    "list 50"
+                ],
+                "tips": [
+                    "Default limit is 10 thoughts",
+                    "Shows most recent thoughts first",
+                    "Use 'show <id>' for full details"
+                ]
+            },
+            "show": {
+                "description": "Show detailed information about a specific thought",
+                "syntax": [
+                    "show <thought-id>"
+                ],
+                "examples": [
+                    "show abc123",
+                    "show def456789"
+                ],
+                "tips": [
+                    "Get thought IDs from 'list' command",
+                    "Shows full content and metadata",
+                    "Includes related thoughts if available"
+                ]
+            },
+            "delete": {
+                "description": "Delete a thought by ID",
+                "syntax": [
+                    "delete <thought-id>"
+                ],
+                "examples": [
+                    "delete abc123",
+                    "rm def456  (alias)"
+                ],
+                "tips": [
+                    "Requires confirmation",
+                    "Cannot be undone",
+                    "Works offline - will sync deletion"
+                ]
+            },
+            "sync": {
+                "description": "Synchronize with the server",
+                "syntax": [
+                    "sync"
+                ],
+                "examples": [
+                    "sync"
+                ],
+                "tips": [
+                    "Uploads offline changes",
+                    "Downloads latest thoughts",
+                    "Resolves conflicts automatically"
+                ]
+            },
+            "stats": {
+                "description": "Show statistics about your thoughts",
+                "syntax": [
+                    "stats"
+                ],
+                "examples": [
+                    "stats"
+                ],
+                "tips": [
+                    "Shows total thought count",
+                    "Displays cache status",
+                    "Includes sync information"
+                ]
+            }
+        }
+        
+        if command in command_help:
+            help_info = command_help[command]
+            
+            self.console.print(Panel(
+                f"[bold blue]{command.upper()} Command Help[/bold blue]",
+                title=f"Help: {command}",
+                border_style="blue"
+            ))
+            
+            self.console.print(f"[bold]Description:[/bold] {help_info['description']}")
+            
+            self.console.print(f"\n[bold]Syntax:[/bold]")
+            for syntax in help_info['syntax']:
+                self.console.print(f"  [cyan]{syntax}[/cyan]")
+            
+            self.console.print(f"\n[bold]Examples:[/bold]")
+            for example in help_info['examples']:
+                self.console.print(f"  [green]{example}[/green]")
+            
+            self.console.print(f"\n[bold]Tips:[/bold]")
+            for tip in help_info['tips']:
+                self.console.print(f"  • {tip}")
+        else:
+            self.console.print(f"[red]No detailed help available for '{command}'[/red]")
+            self.console.print("Available commands: add, search, list, show, delete, sync, stats")
+            self.console.print("Type 'help' for general help")
     
     async def _handle_history(self, args: List[str]) -> None:
         """Handle history command."""
@@ -426,6 +596,100 @@ class InteractiveSession:
         # Clear screen
         self.console.clear()
         self._show_welcome()
+    
+    async def _handle_tutorial(self, args: List[str]) -> None:
+        """Handle tutorial command."""
+        self.console.print(Panel(
+            "[bold blue]🎓 Interactive Mode Tutorial[/bold blue]\n\n"
+            "Welcome to Faraday's interactive mode! This is a quick tutorial to get you started.",
+            title="Tutorial",
+            border_style="blue"
+        ))
+        
+        tutorial_steps = [
+            {
+                "title": "Adding Thoughts",
+                "content": "Use natural syntax to add thoughts:",
+                "examples": [
+                    "add: Had a great meeting today",
+                    "add: Book recommendation - 'Deep Work'",
+                    "add Meeting notes from standup"
+                ]
+            },
+            {
+                "title": "Searching",
+                "content": "Search uses AI to find relevant thoughts:",
+                "examples": [
+                    "search: coffee meetings",
+                    "search: project ideas",
+                    "search machine learning"
+                ]
+            },
+            {
+                "title": "Managing Thoughts",
+                "content": "List, view, and manage your thoughts:",
+                "examples": [
+                    "list 10",
+                    "show abc123",
+                    "delete def456"
+                ]
+            },
+            {
+                "title": "Getting Help",
+                "content": "Get help anytime:",
+                "examples": [
+                    "help",
+                    "help add",
+                    "tips"
+                ]
+            }
+        ]
+        
+        for i, step in enumerate(tutorial_steps, 1):
+            self.console.print(f"\n[bold cyan]Step {i}: {step['title']}[/bold cyan]")
+            self.console.print(step['content'])
+            for example in step['examples']:
+                self.console.print(f"  [green]{example}[/green]")
+        
+        self.console.print(f"\n[bold green]🎉 You're ready to go![/bold green]")
+        self.console.print("Try adding your first thought or searching for something.")
+        self.console.print("Type 'help' anytime for more information.")
+    
+    async def _handle_tips(self, args: List[str]) -> None:
+        """Handle tips command."""
+        tips_table = Table(title="💡 Interactive Mode Tips")
+        tips_table.add_column("Tip", style="cyan", no_wrap=True)
+        tips_table.add_column("Description", style="white")
+        tips_table.add_column("Example", style="dim")
+        
+        tips_info = [
+            ("Colon Syntax", "Use natural language with colons", "add: your thought"),
+            ("Command Shortcuts", "Use aliases for faster typing", "h (help), q (quit), ls (list)"),
+            ("Partial IDs", "You can use partial thought IDs", "show abc (instead of abc123def)"),
+            ("Command History", "Access your command history", "history 20"),
+            ("Context Help", "Get help on specific commands", "help search"),
+            ("Offline Mode", "Works offline, syncs when online", "add: works without internet"),
+            ("Clear Screen", "Clear the screen anytime", "clear"),
+            ("Smart Search", "Search understands context and meaning", "search: yesterday's insights"),
+            ("Batch Operations", "List multiple thoughts at once", "list 50"),
+            ("Quick Exit", "Multiple ways to exit", "exit, quit, or Ctrl+D"),
+        ]
+        
+        for tip, description, example in tips_info:
+            tips_table.add_row(tip, description, example)
+        
+        self.console.print(tips_table)
+        
+        # Show contextual tips based on current state
+        self.console.print("\n[bold]Contextual Tips:[/bold]")
+        
+        if not self.auth_manager.is_authenticated():
+            self.console.print("🔐 [yellow]Not logged in?[/yellow] Exit and run: [cyan]faraday auth login[/cyan]")
+        
+        if hasattr(self.cached_api, 'is_offline') and self.cached_api.is_offline:
+            self.console.print("📴 [yellow]Offline mode active.[/yellow] Your changes will sync when online.")
+        
+        self.console.print("💡 [dim]Pro tip: Use 'tutorial' for a guided walkthrough![/dim]")
     
     async def _handle_exit(self, args: List[str]) -> None:
         """Handle exit command."""
